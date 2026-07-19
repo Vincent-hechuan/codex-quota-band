@@ -11,6 +11,7 @@ band-app/build/
 .temp_*/
 out/
 coverage/
+output/playwright/
 *.blockmap
 latest*.yml
 
@@ -36,6 +37,7 @@ smoke*.json
 # Editors and operating systems
 .vscode/
 .idea/
+.playwright-cli/
 *.code-workspace
 .DS_Store
 Thumbs.db

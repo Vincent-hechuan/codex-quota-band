@@ -1,10 +1,29 @@
-# Codex Quota for Xiaomi Smart Band 10
+<p align="right"><a href="README_EN.md">English</a></p>
+
+# 小米手环 10 Codex 额度
 
 在小米手环 10 上随时查看 **Codex 周额度、下次重置日期和可用重置次数**。
 
-![Codex Quota 图标](assets/icon.svg)
+<p align="center">
+  <img src="assets/icon.svg" alt="Codex Quota 图标" width="96">
+</p>
 
 当前版本：**0.3.0**
+
+## 手环页面预览
+
+<table>
+  <tr>
+    <th align="center">已同步</th>
+    <th align="center">未同步</th>
+    <th align="center">缓存</th>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/images/band-synced.png" alt="已同步状态" width="180"></td>
+    <td align="center"><img src="docs/images/band-unsynced.png" alt="未同步状态" width="180"></td>
+    <td align="center"><img src="docs/images/band-cached.png" alt="缓存状态" width="180"></td>
+  </tr>
+</table>
 
 ## 开始前
 
@@ -43,7 +62,7 @@
 
 1. 打开 Android 手机上的 AstroBox。
 2. 点击底部的「插件」。
-3. 点击右上角的 `+`，选择导入本地插件。
+3. 点击右上角的 `+`，导入本地插件。
 4. 选择下载好的 `codex-quota-astrobox-0.3.0.abp`。
 5. 导入完成后重启 AstroBox。
 6. 再次进入「插件」，应当可以看到「Codex 额度桥接」。
@@ -54,8 +73,9 @@
 1. 打开 AstroBox，进入已连接的小米手环 10 设备页面。
 2. 找到「快应用数量」卡片。
 3. 点击卡片右上角的齿轮图标。
-4. 选择导入本地快应用，并选择 `com.codex.quota.debug.0.3.0.rpk`。
-5. 等待安装完成，手环应用列表中会出现「Codex 额度」。
+4. 点击右上角的 `+`，导入本地 RPK 文件。
+5. 选择 `com.codex.quota.debug.0.3.0.rpk`。
+6. 等待安装完成，手环应用列表中会出现「Codex 额度」。
 
 ## 首次配对
 
