@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://local.codex-quota.invalid/contract/snapshot-v1.schema.json",
+  "title": "Codex Quota Snapshot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "generatedAt",
+    "sourceStatus",
+    "limitsCollectedAt",
+    "windows",
+    "resetInventory",
+    "link"
+  ],
+  "properties": {
+    "protocolVersion": { "const": 1 },
+    "generatedAt": { "$ref": "#/definitions/timestamp" },
+    "sourceStatus": {
+      "enum": ["ok", "partial", "unavailable", "paused"]
+    },
+    "limitsCollectedAt": {
+      "oneOf": [
+        { "$ref": "#/definitions/timestamp" },
+        { "type": "null" }
+      ]
+    },
+    "windows": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/window" }
+    },
+    "resetInventory": { "$ref": "#/definitions/resetInventory" },
+    "link": { "$ref": "#/definitions/link" }
+  },
+  "definitions": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "windowMinutes",
+        "remainingPercent",
+        "resetsAt",
+        "status"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "windowMinutes": { "type": "integer", "minimum": 1 },
+        "remainingPercent": {
+          "oneOf": [
+            { "type": "integer", "minimum": 0, "maximum": 100 },
+            { "type": "null" }
+          ]
+        },
+        "resetsAt": { "$ref": "#/definitions/timestamp" },
+        "status": { "enum": ["current", "pending_sync", "unknown"] }
+      }
+    },
+    "resetInventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "availableCount", "cachedAt", "items"],
+      "properties": {
+        "status": {
+          "enum": ["cached", "cached_derived", "missing", "unavailable"]
+        },
+        "availableCount": {
+          "oneOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "null" }
+          ]
+        },
+        "cachedAt": {
+          "oneOf": [
+            { "$ref": "#/definitions/timestamp" },
+            { "type": "null" }
+          ]
+        },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/resetItem" }
+        }
+      }
+    },
+    "resetItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "status", "expiresAt"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "status": { "const": "available" },
+        "expiresAt": { "$ref": "#/definitions/timestamp" }
+      }
+    },
+    "link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["computer", "codex"],
+      "properties": {
+        "computer": { "enum": ["online", "offline", "paused"] },
+        "codex": { "enum": ["ok", "unavailable", "stale", "format_changed"] }
+      }
+    }
+  }
+}

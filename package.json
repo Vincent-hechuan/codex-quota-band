@@ -1,0 +1,68 @@
+{
+  "name": "codex-quota-mvp",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "main": "src/desktop/electron-main.js",
+  "description": "Privacy-first Codex quota bridge for Xiaomi Smart Band 10",
+  "scripts": {
+    "prestart": "npm run icon:generate",
+    "start": "electron .",
+    "presmoke": "npm run icon:generate",
+    "smoke": "electron . --smoke-test",
+    "test": "node --test test/*.test.js",
+    "test:real-data": "node scripts/real-data-roundtrip.js",
+    "test:packaged": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-packaged.ps1",
+    "test:watch": "node --test --watch test/*.test.js",
+    "test:plugin": "powershell -NoProfile -ExecutionPolicy Bypass -File astrobox-plugin/scripts/test.ps1",
+    "prototype:deeplink:build": "powershell -NoProfile -ExecutionPolicy Bypass -File astrobox-plugin/prototype-deeplink-pairing/scripts/build.ps1 -Release",
+    "icon:generate": "node scripts/generate-icon.js",
+    "prebuild:win": "npm run icon:generate",
+    "build:win": "electron-builder --win nsis --x64",
+    "build:plugin": "powershell -NoProfile -ExecutionPolicy Bypass -File astrobox-plugin/scripts/build.ps1 -Release"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "qrcode": "1.5.4"
+  },
+  "devDependencies": {
+    "electron": "43.1.1",
+    "electron-builder": "26.15.3",
+    "sharp": "0.35.3"
+  },
+  "build": {
+    "appId": "com.tony.codex-quota",
+    "productName": "Codex Quota",
+    "asar": true,
+    "files": [
+      "src/**/*",
+      "contract/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/tray-icon.png",
+        "to": "tray-icon.png"
+      }
+    ],
+    "win": {
+      "executableName": "CodexQuota",
+      "icon": "build/icon.png",
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true
+    }
+  }
+}

@@ -1,0 +1,422 @@
+<template>
+  <div class="page">
+    <div class="content">
+      <div class="clock-section">
+        <text class="clock-time">{{clockTimeText}}</text>
+      </div>
+
+      <div class="sync-pill sync-pill-{{statusTone}}">
+        <text class="status-label">{{statusText}}</text>
+        <text class="status-time">{{statusTimeText}}</text>
+      </div>
+
+      <div class="quota-section">
+        <text class="section-label">周额度</text>
+        <text class="quota-number text-tone-{{quotaTone}}">{{quotaRemainingText}}</text>
+        <text class="section-detail">{{quotaResetText}}</text>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="reset-section">
+        <text class="section-label">可用重置</text>
+        <div class="reset-row">
+          <text class="reset-number">{{resetCountText}}</text>
+          <text class="reset-unit">次</text>
+        </div>
+        <text class="reset-next">{{resetExpiryText}}</text>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import interconnect from '@system.interconnect'
+import storage from '@system.storage'
+import quotaState from '../../common/quota-state.cjs'
+
+const {
+  createBandView,
+  errorStatusText,
+  formatClock,
+  sanitizeSnapshotForBand
+} = quotaState
+
+const CACHE_KEY = 'codex-quota-snapshot-v1'
+const REFRESH_INTERVAL = 5000
+const REQUEST_TIMEOUT = 5000
+const connection = interconnect.instance()
+
+const STATUS_ALIASES = {
+  '手机链路断开': '离线',
+  '手机链路异常': '离线',
+  '等待手机链路': '离线',
+  '链路状态异常': '离线',
+  '电脑未连接': '离线',
+  '局域网不可用': '离线',
+  '同步超时': '离线',
+  '发送失败': '离线',
+  '显示缓存': '缓存',
+  '需要 AstroBox': '需配对',
+  '缓存不可用': '缓存异常',
+  '缓存读取失败': '缓存异常',
+  '额度格式异常': '数据异常'
+}
+
+function parseMessage(event) {
+  const raw = event && event.data !== undefined ? event.data : event
+  if (typeof raw === 'string') {
+    try { return JSON.parse(raw) } catch (error) { return { type: 'invalid' } }
+  }
+  return raw || {}
+}
+
+function compactClock(value) {
+  const match = String(value || '').match(/(\d{2}:\d{2})$/)
+  return match ? match[1] : ''
+}
+
+function compactExpiry(value) {
+  const text = String(value || '')
+  if (text.indexOf('最近到期 ') === 0) return `${text.slice(5)}到期`
+  return text
+}
+
+export default {
+  private: {
+    statusText: '读取中',
+    statusTimeText: '',
+    statusTone: 'warning',
+    lastSyncClockText: '',
+    hasSnapshot: false,
+    quotaRemainingText: '--',
+    quotaResetText: '暂无额度数据',
+    quotaTone: 'unknown',
+    resetCountText: '--',
+    resetExpiryText: '暂无重置数据',
+    clockTimeText: '--:--',
+    connected: false,
+    visible: false,
+    refreshing: false,
+    requestNonce: '',
+    refreshTimer: null,
+    timeoutTimer: null,
+    clockTimer: null
+  },
+
+  onInit() {
+    connection.onopen = () => {
+      this.connected = true
+      if (this.visible) this.requestSnapshot()
+    }
+    connection.onclose = () => {
+      this.connected = false
+      this.finishRequest()
+      this.showCachedStatus('手机链路断开')
+    }
+    connection.onerror = (error) => {
+      this.connected = false
+      this.finishRequest()
+      this.showCachedStatus(error && error.code === 1001 ? '需要 AstroBox' : '手机链路异常')
+    }
+    connection.onmessage = (event) => this.handleMessage(parseMessage(event))
+    this.updateClock()
+    this.loadCache()
+  },
+
+  onShow() {
+    this.visible = true
+    this.startClockTimer()
+    connection.getReadyState({
+      success: (result) => {
+        this.connected = result.status === 1
+        if (this.connected) this.requestSnapshot()
+        else this.showCachedStatus('等待手机链路')
+      },
+      fail: () => {
+        this.connected = false
+        this.showCachedStatus('链路状态异常')
+      }
+    })
+    this.startRefreshTimer()
+  },
+
+  onHide() {
+    this.visible = false
+    this.stopRefreshTimer()
+    this.stopClockTimer()
+    this.finishRequest()
+  },
+
+  onDestroy() {
+    this.stopRefreshTimer()
+    this.stopClockTimer()
+    this.finishRequest()
+    connection.onopen = null
+    connection.onclose = null
+    connection.onerror = null
+    connection.onmessage = null
+  },
+
+  updateClock() {
+    this.clockTimeText = formatClock(new Date()).timeText
+  },
+
+  startClockTimer() {
+    this.stopClockTimer()
+    this.updateClock()
+    const delay = 60050 - (Date.now() % 60000)
+    this.clockTimer = setTimeout(() => {
+      this.clockTimer = null
+      if (this.visible) this.startClockTimer()
+    }, delay)
+  },
+
+  stopClockTimer() {
+    if (this.clockTimer) clearTimeout(this.clockTimer)
+    this.clockTimer = null
+  },
+
+  loadCache() {
+    storage.get({
+      key: CACHE_KEY,
+      default: '',
+      success: (value) => {
+        if (!value) return
+        try {
+          const snapshot = sanitizeSnapshotForBand(JSON.parse(value), new Date())
+          this.applySnapshot(snapshot)
+          this.showCachedStatus('显示缓存', 'warning')
+        } catch (error) {
+          this.showCachedStatus('缓存不可用')
+        }
+      },
+      fail: () => { this.showCachedStatus('缓存读取失败') }
+    })
+  },
+
+  startRefreshTimer() {
+    this.stopRefreshTimer()
+    this.refreshTimer = setInterval(() => {
+      if (this.visible && this.connected) this.requestSnapshot()
+    }, REFRESH_INTERVAL)
+  },
+
+  stopRefreshTimer() {
+    if (this.refreshTimer) clearInterval(this.refreshTimer)
+    this.refreshTimer = null
+  },
+
+  requestSnapshot() {
+    if (this.refreshing || !this.connected) return
+    this.refreshing = true
+    this.requestNonce = `band-${Date.now()}`
+    const nonce = this.requestNonce
+    if (!this.hasSnapshot) {
+      this.statusText = '同步中'
+      this.statusTone = 'warning'
+      this.statusTimeText = ''
+    }
+    connection.send({
+      data: { type: 'quota_request', nonce },
+      success: () => {
+        this.timeoutTimer = setTimeout(() => {
+          if (this.refreshing && this.requestNonce === nonce) {
+            this.finishRequest()
+            this.showCachedStatus('同步超时')
+          }
+        }, REQUEST_TIMEOUT)
+      },
+      fail: () => {
+        this.finishRequest()
+        this.showCachedStatus('发送失败')
+      }
+    })
+  },
+
+  finishRequest() {
+    if (this.timeoutTimer) clearTimeout(this.timeoutTimer)
+    this.timeoutTimer = null
+    this.refreshing = false
+  },
+
+  handleMessage(message) {
+    if (!message || message.nonce !== this.requestNonce) return
+    this.finishRequest()
+    if (message.type === 'quota_error') {
+      this.showCachedStatus(errorStatusText(message.code))
+      return
+    }
+    if (message.type !== 'quota_snapshot') return
+    try {
+      const snapshot = sanitizeSnapshotForBand(message.snapshot, new Date())
+      this.applySnapshot(snapshot)
+      storage.set({ key: CACHE_KEY, value: JSON.stringify(snapshot) })
+    } catch (error) {
+      this.showCachedStatus('额度格式异常')
+    }
+  },
+
+  showCachedStatus(text, tone = 'danger') {
+    this.statusText = STATUS_ALIASES[text] || text
+    this.statusTone = tone
+    this.statusTimeText = this.lastSyncClockText
+  },
+
+  applySnapshot(snapshot) {
+    const view = createBandView(snapshot, new Date())
+    const syncClock = compactClock(view.statusTimeText)
+    this.statusText = view.statusText
+    this.statusTimeText = syncClock
+    this.statusTone = view.statusTone
+    this.lastSyncClockText = syncClock
+    this.hasSnapshot = true
+    this.quotaRemainingText = view.quotaRemainingText
+    this.quotaResetText = view.quotaResetText
+    this.quotaTone = view.quotaTone
+    this.resetCountText = view.resetCountText
+    this.resetExpiryText = compactExpiry(view.resetHintText)
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 212px;
+  height: 520px;
+  background-color: #0d1012;
+}
+.content {
+  width: 212px;
+  height: 520px;
+  padding-top: 20px;
+  flex-direction: column;
+  align-items: center;
+}
+.clock-section {
+  width: 172px;
+  height: 36px;
+  align-items: center;
+}
+.clock-time {
+  width: 172px;
+  height: 36px;
+  color: #f7f8f9;
+  font-size: 30px;
+  font-weight: bold;
+  text-align: center;
+}
+.sync-pill {
+  width: 138px;
+  height: 40px;
+  margin-top: 20px;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 20px;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+.sync-pill-healthy {
+  background-color: #0b2a25;
+  border-color: #278f76;
+}
+.sync-pill-warning {
+  background-color: #382c13;
+  border-color: #a7832a;
+}
+.sync-pill-danger {
+  background-color: #3a191b;
+  border-color: #c75e50;
+}
+.status-label {
+  color: #f4fbf8;
+  font-size: 20px;
+  font-weight: bold;
+}
+.status-time {
+  margin-left: 8px;
+  color: #f4fbf8;
+  font-size: 20px;
+  font-weight: bold;
+}
+.quota-section {
+  width: 172px;
+  height: 150px;
+  margin-top: 24px;
+  flex-direction: column;
+  align-items: center;
+}
+.section-label {
+  width: 172px;
+  height: 26px;
+  color: #f7f8f9;
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+}
+.quota-number {
+  width: 188px;
+  height: 86px;
+  margin-top: 6px;
+  font-size: 76px;
+  font-weight: bold;
+  text-align: center;
+}
+.text-tone-healthy { color: #62e5bf; }
+.text-tone-warning { color: #f2c94c; }
+.text-tone-danger { color: #ff7078; }
+.text-tone-offline { color: #c1c8cc; }
+.text-tone-unknown { color: #c1c8cc; }
+.section-detail {
+  width: 172px;
+  height: 26px;
+  margin-top: 6px;
+  color: #c1c8cc;
+  font-size: 20px;
+  font-weight: normal;
+  text-align: center;
+}
+.divider {
+  width: 136px;
+  height: 2px;
+  margin-top: 35px;
+  background-color: #38464b;
+}
+.reset-section {
+  width: 172px;
+  height: 136px;
+  margin-top: 20px;
+  flex-direction: column;
+  align-items: center;
+}
+.reset-row {
+  width: 172px;
+  height: 76px;
+  margin-top: 4px;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-end;
+}
+.reset-number {
+  color: #62e5bf;
+  font-size: 68px;
+  font-weight: bold;
+}
+.reset-unit {
+  margin-left: 7px;
+  margin-bottom: 7px;
+  color: #f7f8f9;
+  font-size: 20px;
+  font-weight: bold;
+}
+.reset-next {
+  width: 172px;
+  height: 26px;
+  margin-top: 4px;
+  color: #c1c8cc;
+  font-size: 20px;
+  font-weight: normal;
+  text-align: center;
+}
+</style>

@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs and caches
+dist/
+**/dist/
+target/
+**/target/
+band-app/build/
+.temp_*/
+out/
+coverage/
+*.blockmap
+latest*.yml
+
+# Packaged binaries belong in GitHub Releases
+*.exe
+*.msi
+*.abp
+*.rpk
+
+# Local configuration, credentials, logs and diagnostics
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+*.log
+*.tmp
+diagnostic*.json
+smoke*.json
+
+# Editors and operating systems
+.vscode/
+.idea/
+*.code-workspace
+.DS_Store
+Thumbs.db
+desktop.ini

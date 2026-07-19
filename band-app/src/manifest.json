@@ -1,0 +1,24 @@
+{
+  "package": "com.codex.quota",
+  "name": "Codex 额度",
+  "versionName": "0.2.1",
+  "versionCode": 21,
+  "minPlatformVersion": 1200,
+  "icon": "/common/logo.png",
+  "simulationVersion": "default",
+  "deviceTypeList": ["watch"],
+  "features": [
+    { "name": "system.interconnect" },
+    { "name": "system.storage" }
+  ],
+  "config": {
+    "logLevel": "log",
+    "designWidth": 212
+  },
+  "router": {
+    "entry": "pages/index",
+    "pages": {
+      "pages/index": { "component": "index" }
+    }
+  }
+}

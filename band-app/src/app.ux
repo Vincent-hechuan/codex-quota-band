@@ -1,0 +1,10 @@
+<script>
+export default {
+  onCreate() {
+    console.info('Codex 额度 v0.2.1 已启动')
+  },
+  onError(error) {
+    console.error('Codex 额度运行错误', error && error.message ? error.message : 'unknown')
+  }
+}
+</script>
