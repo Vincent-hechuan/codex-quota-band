@@ -241,25 +241,25 @@ mod tests {
     #[test]
     fn deeplink_pairing_payload_is_closed_versioned_and_private() {
         let payload = parse_deeplink_pairing_payload(
-            r#"{"protocolVersion":1,"kind":"codex-quota-pairing","baseUrls":["http://192.168.3.2:17321","http://10.0.0.8:17321"],"code":"123456"}"#,
+            r#"{"protocolVersion":1,"kind":"codex-quota-pairing","baseUrls":["http://192.168.50.2:17321","http://10.0.0.8:17321"],"code":"123456"}"#,
         )
         .expect("valid DeepLink pairing payload");
         assert_eq!(
             payload.base_urls,
             vec![
-                "http://192.168.3.2:17321".to_string(),
+                "http://192.168.50.2:17321".to_string(),
                 "http://10.0.0.8:17321".to_string()
             ]
         );
         assert_eq!(payload.code, "123456");
 
         for rejected in [
-            r#"{"protocolVersion":2,"kind":"codex-quota-pairing","baseUrls":["http://192.168.3.2:17321"],"code":"123456"}"#,
-            r#"{"protocolVersion":1,"kind":"wrong","baseUrls":["http://192.168.3.2:17321"],"code":"123456"}"#,
+            r#"{"protocolVersion":2,"kind":"codex-quota-pairing","baseUrls":["http://192.168.50.2:17321"],"code":"123456"}"#,
+            r#"{"protocolVersion":1,"kind":"wrong","baseUrls":["http://192.168.50.2:17321"],"code":"123456"}"#,
             r#"{"protocolVersion":1,"kind":"codex-quota-pairing","baseUrls":["http://8.8.8.8:17321"],"code":"123456"}"#,
             r#"{"protocolVersion":1,"kind":"codex-quota-pairing","baseUrls":[],"code":"123456"}"#,
-            r#"{"protocolVersion":1,"kind":"codex-quota-pairing","baseUrls":["http://192.168.3.2:17321"],"code":"12345"}"#,
-            r#"{"protocolVersion":1,"kind":"codex-quota-pairing","baseUrls":["http://192.168.3.2:17321"],"code":"123456","token":"leak"}"#,
+            r#"{"protocolVersion":1,"kind":"codex-quota-pairing","baseUrls":["http://192.168.50.2:17321"],"code":"12345"}"#,
+            r#"{"protocolVersion":1,"kind":"codex-quota-pairing","baseUrls":["http://192.168.50.2:17321"],"code":"123456","token":"leak"}"#,
         ] {
             assert!(
                 parse_deeplink_pairing_payload(rejected).is_err(),

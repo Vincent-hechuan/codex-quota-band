@@ -1,7 +1,7 @@
 {
   "name": "Codex 额度桥接",
   "icon": "icon.png",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "扫码配对后，在小米手环与 Windows 只读额度服务之间安全转发裁剪快照",
   "author": "Vincent-hechuan",
   "website": "https://github.com/Vincent-hechuan/codex-quota-band",

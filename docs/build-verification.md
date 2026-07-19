@@ -1,8 +1,8 @@
 # 构建与验证记录
 
-日期：2026-07-18
+日期：2026-07-20
 
-候选组合：Windows 0.3.0 / AstroBox 0.2.0，手环 RPK 0.2.1
+候选组合：Windows / AstroBox / 手环 RPK 统一为 0.3.0
 
 ## 自动化与本机验证
 
@@ -20,9 +20,11 @@
 
 | 产物 | 字节数 | SHA-256 |
 | --- | ---: | --- |
-| `dist/Codex Quota Setup 0.3.0.exe` | 100,025,542 | `27D653E9AD8F6034C4CDC4DB21FEDB777D168C63DD7119149A7F157F43BCB43E` |
-| `astrobox-plugin/dist/codex-quota-astrobox-0.2.0.abp` | 208,468 | `6197E7DEDA7EBA97084FE5CD261973182463D3D1370EB60362D534B8F014B7C9` |
-| `band-app/dist/com.codex.quota.debug.0.2.1.rpk` | 47,649 | `DD7DD753F12FCAD5EF3F3C7D74EF2EB430E221C60DFD0DCCA86890D972C6743C` |
+| `dist/Codex Quota Setup 0.3.0.exe` | 100,025,541 | `964084AC317710ECAC020AD1D309289777E0FFB489CD4313607B4BEA96B5711F` |
+| `astrobox-plugin/dist/codex-quota-astrobox-0.3.0.abp` | 208,467 | `D5BCE87A7CB434E57C6D838486736094B4D2722CDB28F2576A904EFD487A3AD8` |
+| `band-app/dist/com.codex.quota.debug.0.3.0.rpk` | 47,646 | `7D7BEA5F1D160728ECE2AFDB55DBB65854A3212D40FF927923062BDAEBBE0EFF` |
+
+统一版本 0.3.0 已完成三组件真机验证：Windows 安装与托盘入口正常；AstroBox 能导入插件、重启后显示「Codex 额度桥接」并完成二维码配对；RPK 能从设备页的「快应用数量」入口安装到小米手环 10，并正常显示额度页面。
 
 Windows 安装包是个人侧载候选包，当前未使用代码签名证书，Windows 会显示未知发布者提示。ABP 与 RPK 也仅用于当前 MVP 侧载，不应作为公开发布签名产物。
 
@@ -36,7 +38,7 @@ Windows GUI 子系统程序可能在 PowerShell 返回控制权后继续执行�
 
 用户在小米手环 10 上运行往返 Spike v0.0.3 后，页面显示“往返完成 Windows 已收到手环 ACK”。这证明 Phase 0 的真实传输链路已经闭环。
 
-正式 AstroBox 0.1.0 已在小米 15 导入并完成配对：插件检测到 1 个设备、2 个订阅；Windows 授权库只有一个 64 位十六进制令牌哈希，不含 `token` 或 `Bearer` 明文。
+正式 AstroBox 0.1.0 已在 Android 真机导入并完成配对：插件检测到有效设备与订阅；Windows 授权库只有一个 64 位十六进制令牌哈希，不含 `token` 或 `Bearer` 明文。
 
 手环 RPK 0.1.0 真机启动时停留在系统启动图。构建后复现确认 AIoT 工具链把独立本地 ES 模块错误转换为未声明的 CommonJS `exports`，异常发生在模板注册前。RPK 0.1.1 已移除该启动路径并改为 Band 10 原生 212×520 画布；真机确认能够打开、滚动并显示 Windows 快照，但 9–12px 的辅助文字在正常佩戴距离难以辨认。
 
@@ -50,13 +52,13 @@ RPK 0.2.1 根据 0.2.0 真机反馈撤回外缘进度环，恢复 v0.1.3 已验�
 
 配对引导的 `.local` 自动发现已用一次性 AstroBox 0.0.2 Spike 真机验证并否决。测试手机能向 Windows 私网地址发出 A/AAAA mDNS 查询，Windows 的手写响应器与 `multicast-dns 7.2.5` 标准响应器都成功单播 A 记录；同一 ABP 访问数字 IP 可得到 HTTP 200，但访问 `codex-quota-spike.local` 始终由 AstroBox/WASI 返回 `DnsError: address not available`。
 
-AstroBox DeepLink Spike 随后在小米 15 / AstroBox NG 2.0.2 上完成真机验证。官网旧参数 `source=openPlugin&pluginName=...&data=...` 只打开插件列表；Android 成品实际使用 `source=plugdata&name=...&payload=...`，测试载荷已成功到达指定插件。Windows 0.3.0 与 AstroBox 0.2.0 已把该路由正式化：桌面生成包含闭合版本化载荷的二维码，插件校验 1–8 个私网数字 IPv4 地址与 6 位码后依次尝试自动配对；手动地址仅保留为高级兜底。
+AstroBox DeepLink Spike 随后在 Android / AstroBox NG 2.0.2 上完成真机验证。官网旧参数 `source=openPlugin&pluginName=...&data=...` 只打开插件列表；Android 成品实际使用 `source=plugdata&name=...&payload=...`，测试载荷已成功到达指定插件。Windows 与 AstroBox 0.3.0 已把该路由正式化：桌面生成包含闭合版本化载荷的二维码，插件校验 1–8 个私网数字 IPv4 地址与 6 位码后依次尝试自动配对；手动地址仅保留为高级兜底。
 
 Windows 0.2.0 将托盘图标从运行时 SVG Data URL 改为打包携带的高对比 PNG，并在源码及安装包烟雾测试中拒绝空图像；额度采集、配对和只读 Snapshot v1 协议未修改。
 
-Windows 0.3.0 新增隔离的二维码配对窗口，默认不显示长地址，5 分钟到期自动关闭；生产 ASAR 已确认包含 `qrcode`、DeepLink 与配对窗口模块。AstroBox 0.2.0 新增 `register_deeplink_action` 权限、闭合载荷解析和扫码自动配对；正式 ABP 的 WASI release 构建通过。打包版烟雾与无副作用诊断均通过，实时额度值不写入公开验证结论。
+Windows 0.3.0 新增隔离的二维码配对窗口，默认不显示长地址，5 分钟到期自动关闭；生产 ASAR 已确认包含 `qrcode`、DeepLink 与配对窗口模块。AstroBox 0.3.0 包含 `register_deeplink_action` 权限、闭合载荷解析和扫码自动配对；正式 ABP 的 WASI release 构建通过。打包版烟雾与无副作用诊断均通过，三个公开组件的版本契约测试会拒绝版本号不一致。
 
-当前执行 `npx astrobox-cli status` 无法连接本机 `127.0.0.1:10721`，因此当前环境没有可用的 AstroBox 桌面 CLI 服务，不能从终端自动推送 RPK。正式 ABP/RPK 需要通过小米 15 上已经连接手环的 AstroBox 界面导入；验收步骤见 `docs/device-acceptance.md`。
+当前执行 `npx astrobox-cli status` 无法连接本机 `127.0.0.1:10721`，因此当前环境没有可用的 AstroBox 桌面 CLI 服务，不能从终端自动推送 RPK。正式 ABP/RPK 需要通过 Android 手机上已经连接手环的 AstroBox 界面导入；验收步骤见 `docs/device-acceptance.md`。
 
 ## Windows 0.1.0 历史安装验证
 

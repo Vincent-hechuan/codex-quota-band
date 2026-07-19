@@ -359,7 +359,7 @@ fn render(element_id: &str) {
     } else {
         "未配对"
     };
-    let title = ui::Element::new(ui::ElementType::P, Some("Codex 额度桥接 v0.2.0"))
+    let title = ui::Element::new(ui::ElementType::P, Some("Codex 额度桥接 v0.3.0"))
         .size(26)
         .text_color("#FFFFFF");
     let status = ui::Element::new(ui::ElementType::P, Some(&state.status))

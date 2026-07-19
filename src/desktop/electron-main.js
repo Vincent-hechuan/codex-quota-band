@@ -174,7 +174,7 @@ async function run() {
             if (pairing.endpoints.length === 0) {
               await dialog.showMessageBox({
                 type: "warning",
-                title: "配对小米 15",
+                title: "配对 Android 手机",
                 message: "未找到可用的私有局域网 IPv4 地址。",
                 detail: "请确认 Windows 已连接到与手机相同的可信局域网。",
               });
@@ -206,7 +206,7 @@ async function run() {
             } catch {
               await dialog.showMessageBox({
                 type: "warning",
-                title: "配对小米 15",
+                title: "配对 Android 手机",
                 message: `二维码生成失败；临时配对码：${pairing.code}`,
                 detail: `地址：\n${pairing.endpoints.join("\n")}\n\n有效至：${formatLocalTime(pairing.expiresAt)}\n配对码仅可成功使用一次。`,
               });
@@ -222,7 +222,7 @@ async function run() {
               defaultId: 0,
               cancelId: 0,
               title: APP_NAME,
-              message: "撤销后，小米 15 必须重新配对才能读取额度。",
+              message: "撤销后，Android 手机必须重新配对才能读取额度。",
             });
             if (result.response === 1) {
               await desktopService.revokeAll();

@@ -39,7 +39,7 @@ Copy-Item -LiteralPath (Join-Path $projectRoot "manifest.json") -Destination $ma
 Copy-Item -LiteralPath (Join-Path $workspaceRoot "build\icon.png") -Destination $iconDestination -Force
 
 $zipPath = Join-Path $dist "codex-quota-astrobox.zip"
-$packagePath = Join-Path $dist "codex-quota-astrobox-0.2.0.abp"
+$packagePath = Join-Path $dist "codex-quota-astrobox-0.3.0.abp"
 if (Test-Path -LiteralPath $zipPath) { Remove-Item -LiteralPath $zipPath -Force }
 if (Test-Path -LiteralPath $packagePath) { Remove-Item -LiteralPath $packagePath -Force }
 Compress-Archive -LiteralPath @($manifestDestination, $iconDestination, $wasmDestination) -DestinationPath $zipPath

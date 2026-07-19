@@ -14,7 +14,7 @@ test("the pairing QR targets the formal AstroBox plugin with a closed versioned 
   const deepLink = createAstroBoxPairingDeepLink({
     pluginName: "Codex 额度桥接",
     endpoints: [
-      "http://192.168.3.2:17321",
+      "http://192.168.50.2:17321",
       "http://10.0.0.8:17321",
     ],
     code: "123456",
@@ -30,7 +30,7 @@ test("the pairing QR targets the formal AstroBox plugin with a closed versioned 
     protocolVersion: 1,
     kind: "codex-quota-pairing",
     baseUrls: [
-      "http://192.168.3.2:17321",
+      "http://192.168.50.2:17321",
       "http://10.0.0.8:17321",
     ],
     code: "123456",
@@ -42,7 +42,7 @@ test("the pairing QR targets the formal AstroBox plugin with a closed versioned 
 test("the desktop refuses malformed or non-private pairing material", () => {
   const valid = {
     pluginName: "Codex 额度桥接",
-    endpoints: ["http://192.168.3.2:17321"],
+    endpoints: ["http://192.168.50.2:17321"],
     code: "123456",
   };
 
@@ -50,7 +50,7 @@ test("the desktop refuses malformed or non-private pairing material", () => {
     { ...valid, pluginName: "" },
     { ...valid, endpoints: [] },
     { ...valid, endpoints: ["http://8.8.8.8:17321"] },
-    { ...valid, endpoints: ["https://192.168.3.2:17321"] },
+    { ...valid, endpoints: ["https://192.168.50.2:17321"] },
     { ...valid, code: "12345" },
   ]) {
     assert.throws(() => createAstroBoxPairingDeepLink(invalid));
@@ -62,13 +62,13 @@ test("home LAN addresses are attempted before common VPN and link-local ranges",
     prioritizePairingAddresses([
       "10.8.0.2",
       "169.254.10.2",
-      "192.168.3.2",
+      "192.168.50.2",
       "172.20.0.2",
       "192.168.31.8",
     ]),
     [
-      "192.168.3.2",
       "192.168.31.8",
+      "192.168.50.2",
       "172.20.0.2",
       "10.8.0.2",
       "169.254.10.2",
@@ -80,7 +80,7 @@ test("the Windows pairing window makes QR primary and manual details copyable", 
   const html = createPairingWindowHtml({
     qrDataUrl: "data:image/png;base64,TEST",
     code: "123456",
-    endpoints: ["http://192.168.3.2:17321", "http://10.0.0.8:17321"],
+    endpoints: ["http://192.168.50.2:17321", "http://10.0.0.8:17321"],
     expiresAt: "2026-07-18T02:05:00.000Z",
   });
 
@@ -88,7 +88,7 @@ test("the Windows pairing window makes QR primary and manual details copyable", 
   assert.match(html, /data:image\/png;base64,TEST/);
   assert.match(html, /打开系统相机扫描/);
   assert.match(html, /123456/);
-  assert.match(html, /192\.168\.3\.2:17321/);
+  assert.match(html, /192\.168\.50\.2:17321/);
   assert.match(html, /readonly/);
   assert.match(html, /复制/);
   assert.doesNotMatch(html, /ChatGPT.*(?:令牌|token)/i);
@@ -100,7 +100,7 @@ test("the pairing window encodes the current one-time session into its QR", asyn
     pluginName: "Codex 额度桥接",
     pairing: {
       code: "654321",
-      endpoints: ["http://192.168.3.2:17321"],
+      endpoints: ["http://192.168.50.2:17321"],
       expiresAt: "2026-07-18T02:05:00.000Z",
     },
     qrEncoder: async (text) => {
@@ -121,7 +121,7 @@ test("the production QR encoder emits an embedded PNG", async () => {
     pluginName: "Codex 额度桥接",
     pairing: {
       code: "654321",
-      endpoints: ["http://192.168.3.2:17321"],
+      endpoints: ["http://192.168.50.2:17321"],
       expiresAt: "2026-07-18T02:05:00.000Z",
     },
   });
@@ -168,7 +168,7 @@ test("the pairing window runs isolated and blocks navigation", async () => {
     pluginName: "Codex 额度桥接",
     pairing: {
       code: "654321",
-      endpoints: ["http://192.168.3.2:17321"],
+      endpoints: ["http://192.168.50.2:17321"],
       expiresAt: "2026-07-18T02:05:00.000Z",
     },
     qrEncoder: async () => "data:image/png;base64,FORMAL",

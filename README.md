@@ -1,60 +1,113 @@
 # Codex Quota for Xiaomi Smart Band 10
 
-在小米手环 10 上查看 Codex 周额度和可用 Full reset 次数。
+在小米手环 10 上随时查看 **Codex 周额度、下次重置日期和可用重置次数**。
 
-这是一个**本地优先、只读、开源的测试版项目**。Windows 托盘程序读取本机 Codex 额度事件，Android 手机上的 AstroBox 插件负责转发，小米手环 10 Vela 轻应用负责显示和离线缓存。
+![Codex Quota 图标](assets/icon.svg)
 
-> 当前已验证组合：Windows 10/11 x64、小米 15、AstroBox NG 2.0.2、小米手环 10。其他 Android 手机或穿戴设备尚未验证。
+当前版本：**0.3.0**
+
+## 开始前
+
+使用本项目之前，需要先在 Android 手机上安装 [AstroBox](https://astrobox.online/downloads/)，并使用 AstroBox 连接小米手环 10。AstroBox 的安装、权限设置和连接手环不属于本项目的安装流程，如果尚未完成，可以自行在网上搜索对应教程。
+
+## 需要什么
+
+- Windows 10/11 x64 电脑，并已登录和使用 Codex
+- 小米手环 10
+- 能够运行 [AstroBox](https://astrobox.online/downloads/)、并可连接手环的 Android 手机
+- 手机与电脑连接同一个可信局域网
+
+理论上，只要 Android 手机能正常运行 AstroBox 并连接小米手环 10，就可以使用；不同品牌和系统版本仍可能存在后台运行或 VPN 设置差异。iPhone 暂不支持。
 
 ## 下载
 
-普通用户不需要下载源代码。请前往 [Releases](https://github.com/Vincent-hechuan/codex-quota-band/releases) 下载同一版本说明中的三个文件：
+从 [Releases](https://github.com/Vincent-hechuan/codex-quota-band/releases) 下载同一版本下的三个文件：
 
-1. `Codex-Quota-Setup-*.exe`：Windows 托盘程序
-2. `codex-quota-astrobox-*.abp`：AstroBox 手机插件
-3. `com.codex.quota.*.rpk`：小米手环 10 轻应用
+| 安装位置 | 文件 |
+| --- | --- |
+| Windows 电脑 | `Codex-Quota-Setup-0.3.0.exe` |
+| Android / AstroBox | `codex-quota-astrobox-0.3.0.abp` |
+| 小米手环 10 | `com.codex.quota.debug.0.3.0.rpk` |
 
-首个公开安装包发布前，Releases 页面可能暂时为空。
+三个组件的版本号应当一致。首个公开测试包发布前，Releases 页面可能暂时为空。
 
-## 使用前准备
+## 安装
 
-- Windows 电脑已经安装并使用 Codex，能够产生本地额度记录。
-- Android 手机已安装 AstroBox，并能连接小米手环 10。
-- 手机和电脑位于同一个可信局域网。
-- 若手机或电脑启用了 VPN/代理，需要允许 AstroBox 和局域网地址绕过 VPN。
+### 1. 安装 Windows 程序
 
-## 安装与配对
+1. 双击 `Codex-Quota-Setup-0.3.0.exe`。
+2. 安装完成后，程序会常驻 Windows 通知区域；如果没看到，请点击任务栏右下角的 `^`。
+3. 当前测试版没有商业代码签名，Windows 可能提示“未知发布者”。请只从本仓库下载，并核对 Release 页面提供的 SHA-256。
 
-1. 在 Windows 上安装并启动 `Codex-Quota-Setup-*.exe`。应用没有主窗口，入口位于系统通知区域。
-2. 在手机 AstroBox 中导入 `*.abp`，并至少打开一次「Codex 额度桥接」，使插件注册扫码入口。
-3. 在 AstroBox 中把 `*.rpk` 安装到小米手环 10。
-4. 在 Windows 托盘图标中选择「显示配对信息…」。
-5. 用手机系统相机扫描二维码，选择在 AstroBox 中打开。插件会自动尝试电脑的可用私网地址并完成配对。
-6. 打开手环上的「Codex 额度」。正常情况下会在数秒内显示周额度、同步时间和可用重置次数。
+### 2. 安装 AstroBox 插件
 
-如果扫码入口失效，可以在 Windows 配对窗口展开高级信息，再在 AstroBox 插件中手动输入地址与 6 位配对码。
+1. 打开 Android 手机上的 AstroBox。
+2. 点击底部的「插件」。
+3. 点击右上角的 `+`，选择导入本地插件。
+4. 选择下载好的 `codex-quota-astrobox-0.3.0.abp`。
+5. 导入完成后重启 AstroBox。
+6. 再次进入「插件」，应当可以看到「Codex 额度桥接」。
+7. 手动打开一次「Codex 额度桥接」，让扫码入口完成注册。
 
-## 已知限制
+### 3. 安装手环应用
 
-- 当前 Windows 安装包没有商业代码签名，Windows 可能显示「未知发布者」。只从本仓库 Releases 下载，并核对发布页提供的 SHA-256。
-- AstroBox 目前没有可验证的 Android Keystore 接口，因此只在插件进程内存中保存只读令牌。AstroBox 被系统终止、重启或插件升级后，需要重新扫码配对。
-- 局域网链路目前使用 HTTP，只应在可信家庭/办公网络中使用，不要把 Windows 服务端口映射到公网。
-- 这不是 OpenAI、Xiaomi 或 AstroBox 的官方产品。
+1. 打开 AstroBox，进入已连接的小米手环 10 设备页面。
+2. 找到「快应用数量」卡片。
+3. 点击卡片右上角的齿轮图标。
+4. 选择导入本地快应用，并选择 `com.codex.quota.debug.0.3.0.rpk`。
+5. 等待安装完成，手环应用列表中会出现「Codex 额度」。
 
-## 隐私与只读边界
+## 首次配对
 
-- 周额度只读取 `~/.codex/sessions` 中的 `rate_limits` 事件。
-- Full reset 只读取 Codex AppX 的 Chromium HTTP 缓存，不读取 Cookie、登录数据或访问令牌。
-- 跨设备只发送裁剪后的额度百分比、重置时间、可用重置数量和链路状态。
-- 不发送对话、提示词、模型输出、项目名称、文件路径、终端内容或完整 Codex 会话。
-- Windows 只持久化长期令牌的 SHA-256 哈希；手机令牌只驻 AstroBox 插件内存；手环不接收配对令牌。
-- 托盘菜单可以随时撤销全部已配对设备。
+1. 确保手机和电脑连接同一个 Wi-Fi 或可信局域网。
+2. 右键 Windows 通知区域中的 Codex Quota 图标，选择「显示配对信息…」。
+3. 用 Android 系统相机扫描电脑上的二维码。
+4. 选择使用 AstroBox 打开，等待插件显示配对成功。
+5. 打开手环上的「Codex 额度」，数据通常会在数秒内出现。
 
-详细设计见 [安全说明](docs/security.md) 和 [AstroBox 凭据存储 ADR](docs/adr-001-astrobox-credential-storage.md)。
+二维码和 6 位配对码只在短时间内有效。正常使用时不需要输入电脑地址；扫码失败时，才展开 Windows 配对窗口中的高级信息进行手动配对。
 
-## 从源码开发
+## 常见问题
 
-要求 Node.js 24+、PowerShell、Rust/WASI 环境，以及小米 Vela 快应用工具链。
+### 扫码后只打开 AstroBox 插件列表
+
+先手动打开一次「Codex 额度桥接」，返回后重新扫码。如果仍然无效，重新导入 ABP 再试。
+
+### 插件找不到 Windows
+
+- 确认手机和电脑位于同一局域网。
+- 如果开启了 VPN/代理，让 AstroBox 和局域网地址绕过 VPN。
+- 首次启动 Windows 程序时，允许它通过 Windows 防火墙的专用网络。
+- 不要在公司访客 Wi-Fi、公共 Wi-Fi 或开启了客户端隔离的网络中配对。
+
+### 手环显示离线或数据不更新
+
+- 确认 AstroBox 仍在后台运行并连接手环。
+- 关闭 Android 对 AstroBox 的省电限制，并允许后台运行、蓝牙和附近设备权限。
+- 如果 AstroBox、手机或插件重启过，从 Windows 托盘重新生成二维码并配对。
+
+### 与“小米运动健康”争抢连接
+
+如果 AstroBox 经常断开，可暂时停止小米运动健康，先完成安装和配对；之后再根据手机系统的后台设置调整两者共存。
+
+## 隐私说明
+
+- 数据只在你的 Windows、Android 手机和手环之间传输，不经过本项目的云服务器。
+- 只读取和显示额度摘要，不读取或发送对话、提示词、项目文件和终端内容。
+- 不读取 ChatGPT/Codex Cookie、登录密码或访问令牌。
+- Windows 托盘菜单可以随时撤销所有已配对设备。
+- 只建议在可信局域网中使用，不要把 Windows 服务端口暴露到公网。
+
+## 卸载
+
+- Windows：在「设置 → 应用 → 已安装的应用」中卸载 Codex Quota。
+- Android：在 AstroBox 中移除「Codex 额度桥接」插件。
+- 手环：在 AstroBox 中卸载「Codex 额度」应用。
+
+<details>
+<summary>开发者构建与测试</summary>
+
+要求 Node.js 24+、PowerShell、Rust/WASI 环境和小米 Vela 快应用工具链。
 
 ```powershell
 npm install
@@ -68,17 +121,12 @@ npm install
 npm run build
 ```
 
-构建产物位于各组件的 `dist` 目录，但不会提交进 Git；公开安装包应作为 GitHub Release assets 上传。
+安全模型见 [docs/security.md](docs/security.md)。
 
-## 组件版本
+</details>
 
-- Windows：0.3.0
-- AstroBox 插件：0.2.0
-- 小米手环 10 RPK：0.2.1
+## 说明
 
-自动化验证和真机待办见 [构建与验证记录](docs/build-verification.md) 与 [真机验收清单](docs/device-acceptance.md)。
+这是社区制作的开源项目，不是 OpenAI、小米或 AstroBox 的官方产品。
 
-## License
-
-[MIT](LICENSE)
-
+使用 [MIT License](LICENSE)。
