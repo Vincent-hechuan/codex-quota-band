@@ -8,19 +8,21 @@
   <img src="assets/icon.svg" alt="Codex Quota 图标" width="96">
 </p>
 
-当前版本：**0.3.0**
+当前版本：**0.3.1**
+
+[查看更新日志](CHANGELOG.md)
 
 ## 手环页面预览
 
 <table>
   <tr>
     <th align="center">已同步</th>
-    <th align="center">未同步</th>
+    <th align="center">离线</th>
     <th align="center">缓存</th>
   </tr>
   <tr>
     <td align="center"><img src="docs/images/band-synced.png" alt="已同步状态" width="180"></td>
-    <td align="center"><img src="docs/images/band-unsynced.png" alt="未同步状态" width="180"></td>
+    <td align="center"><img src="docs/images/band-offline.png" alt="离线状态" width="180"></td>
     <td align="center"><img src="docs/images/band-cached.png" alt="缓存状态" width="180"></td>
   </tr>
 </table>
@@ -44,17 +46,17 @@
 
 | 安装位置 | 文件 |
 | --- | --- |
-| Windows 电脑 | `Codex-Quota-Setup-0.3.0.exe` |
-| Android / AstroBox | `codex-quota-astrobox-0.3.0.abp` |
-| 小米手环 10 | `com.codex.quota.debug.0.3.0.rpk` |
+| Windows 电脑 | `Codex-Quota-Setup-0.3.1.exe` |
+| Android / AstroBox | `codex-quota-astrobox-0.3.1.abp` |
+| 小米手环 10 | `com.codex.quota.debug.0.3.1.rpk` |
 
-三个组件的版本号应当一致。首个公开测试包发布前，Releases 页面可能暂时为空。
+三个组件的版本号应当一致。
 
 ## 安装
 
 ### 1. 安装 Windows 程序
 
-1. 双击 `Codex-Quota-Setup-0.3.0.exe`。
+1. 双击 `Codex-Quota-Setup-0.3.1.exe`。
 2. 安装完成后，程序会常驻 Windows 通知区域；如果没看到，请点击任务栏右下角的 `^`。
 3. 当前测试版没有商业代码签名，Windows 可能提示“未知发布者”。请只从本仓库下载，并核对 Release 页面提供的 SHA-256。
 
@@ -63,7 +65,7 @@
 1. 打开 Android 手机上的 AstroBox。
 2. 点击底部的「插件」。
 3. 点击右上角的 `+`，导入本地插件。
-4. 选择下载好的 `codex-quota-astrobox-0.3.0.abp`。
+4. 选择下载好的 `codex-quota-astrobox-0.3.1.abp`。
 5. 导入完成后重启 AstroBox。
 6. 再次进入「插件」，应当可以看到「Codex 额度桥接」。
 7. 手动打开一次「Codex 额度桥接」，让扫码入口完成注册。
@@ -74,7 +76,7 @@
 2. 找到「快应用数量」卡片。
 3. 点击卡片右上角的齿轮图标。
 4. 点击右上角的 `+`，导入本地 RPK 文件。
-5. 选择 `com.codex.quota.debug.0.3.0.rpk`。
+5. 选择 `com.codex.quota.debug.0.3.1.rpk`。
 6. 等待安装完成，手环应用列表中会出现「Codex 额度」。
 
 ## 首次配对
@@ -105,6 +107,17 @@
 - 确认 AstroBox 仍在后台运行并连接手环。
 - 关闭 Android 对 AstroBox 的省电限制，并允许后台运行、蓝牙和附近设备权限。
 - 如果 AstroBox、手机或插件重启过，从 Windows 托盘重新生成二维码并配对。
+
+### 重装 Codex 后只有周额度，重置次数显示 `--`
+
+周额度和可用重置次数来自 Codex 的不同本地数据。重装 Codex 后，周额度通常仍可读取，但包含重置次数的网络缓存可能已经被清空。
+
+1. 打开 Codex 客户端的「使用量」页面。
+2. 展开「使用限额重置」，等待重置卡片完整显示。
+3. 右键 Windows 通知区域中的 Codex Quota 图标，点击「立即刷新」。
+4. 等待约 5～10 秒，再重新打开手环应用。
+
+`v0.3.1` 在新缓存尚未生成时会保留上一份仍未到期的重置数据，并以「缓存」提示当前状态；Codex 重新生成缓存后会自动恢复为「已同步」。
 
 ### 与“小米运动健康”争抢连接
 

@@ -76,6 +76,36 @@ test("an offline band keeps cached quota and makes sync status concise", () => {
   assert.match(view.statusTimeText, /^上次\d{2}:\d{2}$/);
 });
 
+test("a partial snapshot uses the compact cached label that fits the sync pill", () => {
+  const now = new Date("2030-01-01T02:00:00.000Z");
+  const view = createBandView({
+    protocolVersion: 1,
+    generatedAt: "2030-01-01T01:59:00.000Z",
+    sourceStatus: "partial",
+    limitsCollectedAt: "2030-01-01T01:59:00.000Z",
+    windows: [{
+      id: "codex:weekly",
+      name: "weekly",
+      windowMinutes: 10_080,
+      remainingPercent: 74,
+      resetsAt: "2030-01-08T00:00:00.000Z",
+      status: "current",
+    }],
+    resetInventory: {
+      status: "cached",
+      availableCount: 3,
+      cachedAt: "2029-12-31T09:42:00.000Z",
+      items: [],
+    },
+    link: { computer: "online", codex: "ok" },
+  }, now);
+
+  assert.equal(view.statusText, "缓存");
+  assert.equal(view.statusTone, "warning");
+  assert.equal(view.quotaRemainingText, "74%");
+  assert.equal(view.resetCountText, "3");
+});
+
 test("the band renders only current dynamic windows and locally expires cached quota data", () => {
   const now = new Date("2026-07-18T02:00:00Z");
   const raw = {

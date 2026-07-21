@@ -8,19 +8,21 @@ View your **Codex weekly quota, next reset date, and available reset credits** o
   <img src="assets/icon.svg" alt="Codex Quota icon" width="96">
 </p>
 
-Current version: **0.3.0**
+Current version: **0.3.1**
+
+[View changelog](CHANGELOG.md)
 
 ## Band screen previews
 
 <table>
   <tr>
     <th align="center">Synced</th>
-    <th align="center">Not synced</th>
+    <th align="center">Offline</th>
     <th align="center">Cached</th>
   </tr>
   <tr>
     <td align="center"><img src="docs/images/band-synced.png" alt="Synced state" width="180"></td>
-    <td align="center"><img src="docs/images/band-unsynced.png" alt="Not synced state" width="180"></td>
+    <td align="center"><img src="docs/images/band-offline.png" alt="Offline state" width="180"></td>
     <td align="center"><img src="docs/images/band-cached.png" alt="Cached state" width="180"></td>
   </tr>
 </table>
@@ -44,17 +46,17 @@ Download all three files from the same version on the [Releases](https://github.
 
 | Install on | File |
 | --- | --- |
-| Windows computer | `Codex-Quota-Setup-0.3.0.exe` |
-| Android / AstroBox | `codex-quota-astrobox-0.3.0.abp` |
-| Xiaomi Smart Band 10 | `com.codex.quota.debug.0.3.0.rpk` |
+| Windows computer | `Codex-Quota-Setup-0.3.1.exe` |
+| Android / AstroBox | `codex-quota-astrobox-0.3.1.abp` |
+| Xiaomi Smart Band 10 | `com.codex.quota.debug.0.3.1.rpk` |
 
-All three components should have the same version number. The Releases page may remain empty until the first public test package is published.
+All three components should have the same version number.
 
 ## Installation
 
 ### 1. Install the Windows app
 
-1. Run `Codex-Quota-Setup-0.3.0.exe`.
+1. Run `Codex-Quota-Setup-0.3.1.exe`.
 2. After installation, the app stays in the Windows notification area. If it is hidden, click the `^` icon in the taskbar.
 3. The current test build is not commercially code-signed, so Windows may display an “Unknown publisher” warning. Download only from this repository and verify the SHA-256 value shown on the Release page.
 
@@ -63,7 +65,7 @@ All three components should have the same version number. The Releases page may 
 1. Open AstroBox on the Android phone.
 2. Tap 「插件」 (Plugins) in the bottom navigation bar.
 3. Tap the `+` button in the upper-right corner and import a local plugin.
-4. Select `codex-quota-astrobox-0.3.0.abp`.
+4. Select `codex-quota-astrobox-0.3.1.abp`.
 5. Restart AstroBox after the import finishes.
 6. Open 「插件」 again. 「Codex 额度桥接」 should now appear in the installed plugin list.
 7. Open 「Codex 额度桥接」 once so that its QR-code entry point is registered.
@@ -74,7 +76,7 @@ All three components should have the same version number. The Releases page may 
 2. Find the 「快应用数量」 (Quick app count) card.
 3. Tap the gear icon in the upper-right corner of the card.
 4. Tap the `+` button in the upper-right corner and import a local RPK file.
-5. Select `com.codex.quota.debug.0.3.0.rpk`.
+5. Select `com.codex.quota.debug.0.3.1.rpk`.
 6. Wait for installation to finish. 「Codex 额度」 will appear in the app list on the band.
 
 ## First pairing
@@ -105,6 +107,17 @@ Open 「Codex 额度桥接」 manually once, go back, and scan again. If it stil
 - Confirm that AstroBox is still running in the background and connected to the band.
 - Disable battery restrictions for AstroBox and grant background, Bluetooth, and nearby-device permissions.
 - If AstroBox, the phone, or the plugin has restarted, generate a new QR code from Windows and pair again.
+
+### Only the weekly quota appears after reinstalling Codex, and reset credits show `--`
+
+The weekly quota and available reset credits come from different local Codex data. Reinstalling Codex may preserve the weekly quota source while clearing the network cache that contains reset-credit information.
+
+1. Open the Usage page in the Codex client.
+2. Expand the reset-credit section and wait until its cards are fully displayed.
+3. Right-click the Codex Quota icon in the Windows notification area and select 「立即刷新」 (Refresh now).
+4. Wait about 5–10 seconds, then reopen the band app.
+
+`v0.3.1` keeps the last unexpired reset-credit data while the new cache is unavailable and shows 「缓存」 (Cached). It returns to 「已同步」 (Synced) automatically after Codex recreates the cache.
 
 ### Xiaomi Fitness competes for the connection
 

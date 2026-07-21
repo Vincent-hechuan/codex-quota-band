@@ -44,10 +44,10 @@ test("built app uses the full Xiaomi Smart Band 10 canvas", async () => {
   });
 });
 
-test("built replacement package has the unified 0.3.0 release identity", async () => {
+test("built replacement package has the unified 0.3.1 release identity", async () => {
   const manifest = JSON.parse(await readFile(builtManifestUrl, "utf8"));
-  assert.equal(manifest.versionName, "0.3.0");
-  assert.equal(manifest.versionCode, 30);
+  assert.equal(manifest.versionName, "0.3.1");
+  assert.equal(manifest.versionCode, 31);
 });
 
 test("built Band 10 page restores the readable v0.1.3 hierarchy with a compact clock header", async () => {

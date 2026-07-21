@@ -24,6 +24,45 @@ function staleSnapshot(snapshot, now) {
   };
 }
 
+function retainResetInventory(snapshot, previous, now) {
+  const currentStatus = snapshot?.resetInventory?.status;
+  const previousStatus = previous?.resetInventory?.status;
+  const canRetain =
+    snapshot?.sourceStatus === "partial" &&
+    ["missing", "unavailable"].includes(currentStatus) &&
+    ["cached", "cached_derived"].includes(previousStatus) &&
+    Number.isInteger(previous.resetInventory.availableCount);
+
+  if (!canRetain) return snapshot;
+
+  const previousItems = Array.isArray(previous.resetInventory.items)
+    ? previous.resetInventory.items
+    : [];
+  const items = previousItems.filter(
+    (item) =>
+      item?.status === "available" &&
+      typeof item.expiresAt === "string" &&
+      Date.parse(item.expiresAt) > now.getTime(),
+  );
+  if (items.length === 0 && previous.resetInventory.availableCount !== 0) {
+    return snapshot;
+  }
+
+  const derived =
+    previousStatus === "cached_derived" ||
+    items.length !== previousItems.length ||
+    items.length !== previous.resetInventory.availableCount;
+  return {
+    ...snapshot,
+    resetInventory: {
+      ...previous.resetInventory,
+      status: derived ? "cached_derived" : "cached",
+      availableCount: items.length,
+      items,
+    },
+  };
+}
+
 export function createSnapshotCache({
   collector,
   clock = () => new Date(),
@@ -46,7 +85,7 @@ export function createSnapshotCache({
 
     refreshInProgress = (async () => {
       try {
-        const snapshot = await collector();
+        const snapshot = retainResetInventory(await collector(), lastTrusted, clock());
         await onTrustedSnapshot(snapshot);
         lastTrusted = snapshot;
         current = snapshot;

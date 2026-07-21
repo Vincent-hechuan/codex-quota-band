@@ -15,11 +15,11 @@ test("all public components use the same release version", async () => {
     readJson("../band-app/src/manifest.json"),
   ]);
 
-  assert.equal(desktopPackage.version, "0.3.0");
+  assert.equal(desktopPackage.version, "0.3.1");
   assert.equal(pluginManifest.version, desktopPackage.version);
   assert.equal(pluginManifest.name, FORMAL_ASTROBOX_PLUGIN_NAME);
   assert.ok(pluginManifest.permissions.includes("register_deeplink_action"));
   assert.equal(bandPackage.version, desktopPackage.version);
   assert.equal(bandManifest.versionName, desktopPackage.version);
-  assert.equal(bandManifest.versionCode, 30);
+  assert.equal(bandManifest.versionCode, 31);
 });

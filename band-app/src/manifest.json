@@ -1,8 +1,8 @@
 {
   "package": "com.codex.quota",
   "name": "Codex 额度",
-  "versionName": "0.3.0",
-  "versionCode": 30,
+  "versionName": "0.3.1",
+  "versionCode": 31,
   "minPlatformVersion": 1200,
   "icon": "/common/logo.png",
   "simulationVersion": "default",

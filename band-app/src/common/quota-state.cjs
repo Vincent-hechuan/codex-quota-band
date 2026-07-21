@@ -172,7 +172,7 @@ function statusPresentation(snapshot) {
     return { text: "额度不可用", tone: "danger", cache: true };
   }
   if (snapshot.sourceStatus === "partial") {
-    return { text: "部分数据缓存", tone: "warning", cache: true };
+    return { text: "缓存", tone: "warning", cache: true };
   }
   return { text: "已同步", tone: "healthy", cache: false };
 }
