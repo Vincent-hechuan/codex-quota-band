@@ -25,6 +25,8 @@ This file records user-visible changes in each public version. Release dates fol
   Add recovery steps for missing reset credits after reinstalling Codex.
 - 将 README 预览中的「未同步」修正为实际存在的「离线」状态。
   Rename the nonexistent “Not synced” preview to the actual “Offline” state.
+- 根据真机验证结果，补充 Android 与 iPhone 的兼容性说明；iPhone 已完成连接验证。
+  Document Android and iPhone compatibility based on real-device testing; iPhone connection has been verified.
 
 ### 验证 / Validation
 

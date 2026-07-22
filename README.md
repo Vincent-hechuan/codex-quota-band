@@ -29,16 +29,16 @@
 
 ## 开始前
 
-使用本项目之前，需要先在 Android 手机上安装 [AstroBox](https://astrobox.online/downloads/)，并使用 AstroBox 连接小米手环 10。AstroBox 的安装、权限设置和连接手环不属于本项目的安装流程，如果尚未完成，可以自行在网上搜索对应教程。
+使用本项目之前，需要先在 Android 或 iPhone 手机上安装 [AstroBox](https://astrobox.online/downloads/)，并使用 AstroBox 连接小米手环 10。AstroBox 的安装、权限设置和连接手环不属于本项目的安装流程，如果尚未完成，可以自行在网上搜索对应教程。
 
 ## 需要什么
 
 - Windows 10/11 x64 电脑，并已登录和使用 Codex
 - 小米手环 10
-- 能够运行 [AstroBox](https://astrobox.online/downloads/)、并可连接手环的 Android 手机
+- 能够运行 [AstroBox](https://astrobox.online/downloads/)、并可连接手环的 Android 或 iPhone 手机
 - 手机与电脑连接同一个可信局域网
 
-理论上，只要 Android 手机能正常运行 AstroBox 并连接小米手环 10，就可以使用；不同品牌和系统版本仍可能存在后台运行或 VPN 设置差异。iPhone 暂不支持。
+理论上，只要手机能正常运行 AstroBox 并连接小米手环 10，就可以使用；不同品牌、系统版本和 AstroBox 版本仍可能存在后台运行或 VPN 设置差异。Android 和 iPhone 均已完成真机连接验证。
 
 ## 下载
 
@@ -47,7 +47,7 @@
 | 安装位置 | 文件 |
 | --- | --- |
 | Windows 电脑 | `Codex-Quota-Setup-0.3.1.exe` |
-| Android / AstroBox | `codex-quota-astrobox-0.3.1.abp` |
+| Android / iPhone / AstroBox | `codex-quota-astrobox-0.3.1.abp` |
 | 小米手环 10 | `com.codex.quota.debug.0.3.1.rpk` |
 
 三个组件的版本号应当一致。
@@ -62,7 +62,7 @@
 
 ### 2. 安装 AstroBox 插件
 
-1. 打开 Android 手机上的 AstroBox。
+1. 打开手机上的 AstroBox（Android 或 iPhone 均可）。
 2. 点击底部的「插件」。
 3. 点击右上角的 `+`，导入本地插件。
 4. 选择下载好的 `codex-quota-astrobox-0.3.1.abp`。
@@ -83,7 +83,7 @@
 
 1. 确保手机和电脑连接同一个 Wi-Fi 或可信局域网。
 2. 右键 Windows 通知区域中的 Codex Quota 图标，选择「显示配对信息…」。
-3. 用 Android 系统相机扫描电脑上的二维码。
+3. 用手机系统相机扫描电脑上的二维码。
 4. 选择使用 AstroBox 打开，等待插件显示配对成功。
 5. 打开手环上的「Codex 额度」，数据通常会在数秒内出现。
 
@@ -105,7 +105,7 @@
 ### 手环显示离线或数据不更新
 
 - 确认 AstroBox 仍在后台运行并连接手环。
-- 关闭 Android 对 AstroBox 的省电限制，并允许后台运行、蓝牙和附近设备权限。
+- 关闭手机系统对 AstroBox 的省电限制，并允许后台运行、蓝牙和附近设备权限。
 - 如果 AstroBox、手机或插件重启过，从 Windows 托盘重新生成二维码并配对。
 
 ### 重装 Codex 后只有周额度，重置次数显示 `--`
@@ -125,7 +125,7 @@
 
 ## 隐私说明
 
-- 数据只在你的 Windows、Android 手机和手环之间传输，不经过本项目的云服务器。
+- 数据只在你的 Windows、手机和手环之间传输，不经过本项目的云服务器。
 - 只读取和显示额度摘要，不读取或发送对话、提示词、项目文件和终端内容。
 - 不读取 ChatGPT/Codex Cookie、登录密码或访问令牌。
 - Windows 托盘菜单可以随时撤销所有已配对设备。
@@ -134,7 +134,7 @@
 ## 卸载
 
 - Windows：在「设置 → 应用 → 已安装的应用」中卸载 Codex Quota。
-- Android：在 AstroBox 中移除「Codex 额度桥接」插件。
+- 手机：在 AstroBox 中移除「Codex 额度桥接」插件。
 - 手环：在 AstroBox 中卸载「Codex 额度」应用。
 
 <details>

@@ -29,16 +29,16 @@ Current version: **0.3.1**
 
 ## Before you start
 
-Install [AstroBox](https://astrobox.online/downloads/) on an Android phone and connect Xiaomi Smart Band 10 in AstroBox first. AstroBox installation, permissions, and initial band pairing are outside this project's setup flow; consult an online AstroBox tutorial if you have not completed them yet.
+Install [AstroBox](https://astrobox.online/downloads/) on an Android or iPhone and connect Xiaomi Smart Band 10 in AstroBox first. AstroBox installation, permissions, and initial band pairing are outside this project's setup flow; consult an online AstroBox tutorial if you have not completed them yet.
 
 ## Requirements
 
 - A Windows 10/11 x64 computer with Codex installed and in use
 - Xiaomi Smart Band 10
-- An Android phone that can run AstroBox and connect to the band
+- An Android or iPhone that can run AstroBox and connect to the band
 - The phone and computer connected to the same trusted local network
 
-In principle, any Android phone that can keep AstroBox running and connected to Xiaomi Smart Band 10 should work. Background-process and VPN settings may vary by phone brand and system version. iPhone is not currently supported.
+In principle, any Android phone or iPhone that can keep AstroBox running and connected to Xiaomi Smart Band 10 should work. Background-process, VPN, and AstroBox-version behavior may vary. Both Android and iPhone have been verified with a real-device connection test.
 
 ## Download
 
@@ -47,7 +47,7 @@ Download all three files from the same version on the [Releases](https://github.
 | Install on | File |
 | --- | --- |
 | Windows computer | `Codex-Quota-Setup-0.3.1.exe` |
-| Android / AstroBox | `codex-quota-astrobox-0.3.1.abp` |
+| Android / iPhone / AstroBox | `codex-quota-astrobox-0.3.1.abp` |
 | Xiaomi Smart Band 10 | `com.codex.quota.debug.0.3.1.rpk` |
 
 All three components should have the same version number.
@@ -62,7 +62,7 @@ All three components should have the same version number.
 
 ### 2. Install the AstroBox plugin
 
-1. Open AstroBox on the Android phone.
+1. Open AstroBox on the phone (Android or iPhone).
 2. Tap 「插件」 (Plugins) in the bottom navigation bar.
 3. Tap the `+` button in the upper-right corner and import a local plugin.
 4. Select `codex-quota-astrobox-0.3.1.abp`.
@@ -83,7 +83,7 @@ All three components should have the same version number.
 
 1. Make sure the phone and computer are on the same Wi-Fi or trusted local network.
 2. Right-click the Codex Quota icon in the Windows notification area and select 「显示配对信息…」 (Show pairing information).
-3. Scan the QR code on the computer with the Android system camera.
+3. Scan the QR code on the computer with the phone's system camera.
 4. Choose to open the link in AstroBox and wait for the plugin to report a successful pairing.
 5. Open 「Codex 额度」 on the band. Quota data should appear within a few seconds.
 
@@ -105,7 +105,7 @@ Open 「Codex 额度桥接」 manually once, go back, and scan again. If it stil
 ### The band shows offline or stops updating
 
 - Confirm that AstroBox is still running in the background and connected to the band.
-- Disable battery restrictions for AstroBox and grant background, Bluetooth, and nearby-device permissions.
+- Disable phone-level battery restrictions for AstroBox and grant background, Bluetooth, and nearby-device permissions.
 - If AstroBox, the phone, or the plugin has restarted, generate a new QR code from Windows and pair again.
 
 ### Only the weekly quota appears after reinstalling Codex, and reset credits show `--`
@@ -125,7 +125,7 @@ If AstroBox disconnects repeatedly, temporarily stop Xiaomi Fitness while instal
 
 ## Privacy
 
-- Data moves only between your Windows computer, Android phone, and band. This project does not use a cloud relay server.
+- Data moves only between your Windows computer, phone, and band. This project does not use a cloud relay server.
 - It reads and displays only quota summaries. It does not read or transmit conversations, prompts, project files, or terminal content.
 - It does not read ChatGPT/Codex cookies, passwords, or access tokens.
 - You can revoke all paired devices from the Windows tray menu at any time.
@@ -134,7 +134,7 @@ If AstroBox disconnects repeatedly, temporarily stop Xiaomi Fitness while instal
 ## Uninstall
 
 - Windows: uninstall Codex Quota from Settings → Apps → Installed apps.
-- Android: remove 「Codex 额度桥接」 from AstroBox.
+- Phone: remove 「Codex 额度桥接」 from AstroBox.
 - Band: uninstall 「Codex 额度」 through AstroBox.
 
 <details>
