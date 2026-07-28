@@ -1,0 +1,23 @@
+{
+  "package": "com.codex.quota.notifyprobe",
+  "name": "Codex 提醒测试",
+  "versionName": "0.0.2",
+  "versionCode": 2,
+  "minPlatformVersion": 1200,
+  "icon": "/common/logo.png",
+  "deviceTypeList": ["watch"],
+  "features": [
+    { "name": "system.notification" },
+    { "name": "system.vibrator" }
+  ],
+  "config": {
+    "logLevel": "log",
+    "designWidth": 212
+  },
+  "router": {
+    "entry": "pages/index",
+    "pages": {
+      "pages/index": { "component": "index" }
+    }
+  }
+}

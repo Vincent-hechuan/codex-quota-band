@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://local.codex-quota.invalid/contract/snapshot-v2.schema.json",
+  "title": "Codex Quota Snapshot v2",
+  "description": "Negotiated Windows-to-Android quota snapshot. Reset-card identities and titles are intentionally omitted.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "generatedAt", "sourceStatus", "limitsCollectedAt", "windows", "resetInventory", "link"],
+  "properties": {
+    "protocolVersion": { "const": 2 },
+    "generatedAt": { "$ref": "snapshot-v1.schema.json#/definitions/timestamp" },
+    "sourceStatus": { "enum": ["ok", "partial", "unavailable", "paused"] },
+    "limitsCollectedAt": {
+      "oneOf": [
+        { "$ref": "snapshot-v1.schema.json#/definitions/timestamp" },
+        { "type": "null" }
+      ]
+    },
+    "windows": {
+      "type": "array",
+      "items": { "$ref": "snapshot-v1.schema.json#/definitions/window" }
+    },
+    "resetInventory": { "$ref": "#/definitions/resetInventory" },
+    "link": { "$ref": "snapshot-v1.schema.json#/definitions/link" }
+  },
+  "definitions": {
+    "resetInventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "availableCount", "cachedAt", "items"],
+      "properties": {
+        "status": { "enum": ["cached", "cached_derived", "missing", "unavailable"] },
+        "availableCount": {
+          "oneOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "null" }
+          ]
+        },
+        "cachedAt": {
+          "oneOf": [
+            { "$ref": "snapshot-v1.schema.json#/definitions/timestamp" },
+            { "type": "null" }
+          ]
+        },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/resetItem" }
+        }
+      }
+    },
+    "resetItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "grantedAt", "expiresAt"],
+      "properties": {
+        "status": { "const": "available" },
+        "grantedAt": {
+          "oneOf": [
+            { "$ref": "snapshot-v1.schema.json#/definitions/timestamp" },
+            { "type": "null" }
+          ]
+        },
+        "expiresAt": { "$ref": "snapshot-v1.schema.json#/definitions/timestamp" }
+      }
+    }
+  }
+}

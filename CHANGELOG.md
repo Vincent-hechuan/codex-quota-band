@@ -4,6 +4,10 @@
 
 This file records user-visible changes in each public version. Release dates follow GitHub Releases.
 
+> `0.5.2` 目前是待完成升级验收的本地正式候选，尚未发布；未发布变更、三端当前状态和验证证据记录在
+> `docs/current-status.md`、`docs/build-verification.md` 与 `docs/device-acceptance.md`。
+> 在获得发布授权前不提前写入正式版本日志。
+
 > `0.3.0` 之前，Windows、AstroBox 和手环 RPK 的版本号并非始终同步；以下早期条目会注明对应组件。
 >
 > Before `0.3.0`, Windows, AstroBox, and band RPK versions were not always synchronized. Early entries identify the affected component.
@@ -25,8 +29,8 @@ This file records user-visible changes in each public version. Release dates fol
   Add recovery steps for missing reset credits after reinstalling Codex.
 - 将 README 预览中的「未同步」修正为实际存在的「离线」状态。
   Rename the nonexistent “Not synced” preview to the actual “Offline” state.
-- 根据真机验证结果，补充 Android 与 iPhone 的兼容性说明；iPhone 已完成连接验证。
-  Document Android and iPhone compatibility based on real-device testing; iPhone connection has been verified.
+- 根据当时真机验证结果，补充 Android 与 iPhone 的兼容性说明；这是 `0.3.1` 历史分支事实，不构成当前支持范围。
+  Document Android and iPhone compatibility based on then-current device testing; this is a `0.3.1` historical fact and not part of the current support scope.
 
 ### 验证 / Validation
 

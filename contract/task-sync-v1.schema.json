@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://local.codex-quota.invalid/contract/task-sync-v1.schema.json",
+  "title": "Codex Quota Task Sync v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "sequence",
+    "generatedAtMs",
+    "chatGptState",
+    "chatGptFocused",
+    "tasks"
+  ],
+  "properties": {
+    "protocolVersion": { "const": 1 },
+    "sequence": { "type": "integer", "minimum": 0 },
+    "generatedAtMs": { "type": "integer", "minimum": 0 },
+    "chatGptState": {
+      "enum": ["running", "not_running", "hook_unavailable"]
+    },
+    "chatGptFocused": { "type": "boolean" },
+    "tasks": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/task" }
+    }
+  },
+  "definitions": {
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "conversationId",
+        "title",
+        "state",
+        "updatedAtMs"
+      ],
+      "properties": {
+        "conversationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "state": {
+          "enum": ["running", "needs_authorization", "waiting_for_review"]
+        },
+        "activity": {
+          "enum": ["executing_command", "modifying_files", "using_browser"]
+        },
+        "updatedAtMs": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

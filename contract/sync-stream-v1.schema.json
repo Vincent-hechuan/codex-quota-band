@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://local.codex-quota.invalid/contract/sync-stream-v1.schema.json",
+  "title": "Codex Quota Encrypted Sync Stream v1",
+  "oneOf": [
+    { "$ref": "#/definitions/clientHello" },
+    { "$ref": "#/definitions/refreshRequest" },
+    { "$ref": "#/definitions/serverHello" },
+    { "$ref": "#/definitions/snapshot" },
+    { "$ref": "#/definitions/heartbeat" }
+  ],
+  "definitions": {
+    "connectionId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "clientHello": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "transportVersion",
+        "clientInstanceId",
+        "supportedQuotaVersions",
+        "supportedTaskVersions"
+      ],
+      "properties": {
+        "type": { "const": "client_hello" },
+        "transportVersion": { "const": 1 },
+        "clientInstanceId": { "$ref": "#/definitions/connectionId" },
+        "supportedQuotaVersions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": { "type": "integer", "enum": [1, 2, 3] }
+        },
+        "supportedTaskVersions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "refreshRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "transportVersion", "connectionId", "scope"],
+      "properties": {
+        "type": { "const": "refresh_request" },
+        "transportVersion": { "const": 1 },
+        "connectionId": { "$ref": "#/definitions/connectionId" },
+        "scope": { "const": "quota" }
+      }
+    },
+    "serverHello": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "transportVersion",
+        "connectionId",
+        "quotaVersion",
+        "taskVersion",
+        "heartbeatIntervalMs"
+      ],
+      "properties": {
+        "type": { "const": "server_hello" },
+        "transportVersion": { "const": 1 },
+        "connectionId": { "$ref": "#/definitions/connectionId" },
+        "quotaVersion": { "enum": [1, 2, 3] },
+        "taskVersion": { "const": 1 },
+        "heartbeatIntervalMs": {
+          "type": "integer",
+          "minimum": 5000,
+          "maximum": 60000
+        }
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "transportVersion",
+        "connectionId",
+        "sequence",
+        "generatedAtMs",
+        "quota",
+        "tasks"
+      ],
+      "properties": {
+        "type": { "const": "snapshot" },
+        "transportVersion": { "const": 1 },
+        "connectionId": { "$ref": "#/definitions/connectionId" },
+        "sequence": { "type": "integer", "minimum": 0 },
+        "generatedAtMs": { "type": "integer", "minimum": 0 },
+        "quota": {
+          "oneOf": [
+            { "$ref": "snapshot-v1.schema.json" },
+            { "$ref": "snapshot-v2.schema.json" },
+            { "$ref": "snapshot-v3.schema.json" }
+          ]
+        },
+        "tasks": { "$ref": "task-sync-v1.schema.json" }
+      }
+    },
+    "heartbeat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "transportVersion",
+        "connectionId",
+        "sequence",
+        "generatedAtMs"
+      ],
+      "properties": {
+        "type": { "const": "heartbeat" },
+        "transportVersion": { "const": 1 },
+        "connectionId": { "$ref": "#/definitions/connectionId" },
+        "sequence": { "type": "integer", "minimum": 0 },
+        "generatedAtMs": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

@@ -51,3 +51,86 @@ test("the public snapshot conforms to the closed version 1 contract", async () =
     false,
   );
 });
+
+test("the sync stream contract accepts negotiated quota v3 and keeps it closed", async () => {
+  const load = async (name) =>
+    JSON.parse(
+      await readFile(new URL(`../contract/${name}`, import.meta.url), "utf8"),
+    );
+  const snapshotV1 = await load("snapshot-v1.schema.json");
+  const snapshotV2 = await load("snapshot-v2.schema.json");
+  const snapshotV3 = await load("snapshot-v3.schema.json");
+  const taskV1 = await load("task-sync-v1.schema.json");
+  const stream = await load("sync-stream-v1.schema.json");
+  const ajv = new Ajv({ allErrors: true });
+  addFormats(ajv);
+  for (const schema of [snapshotV1, snapshotV2, snapshotV3, taskV1]) {
+    ajv.addSchema(schema);
+  }
+  const validate = ajv.compile(stream);
+  const hello = {
+    type: "client_hello",
+    transportVersion: 1,
+    clientInstanceId: "client_0123456789",
+    supportedQuotaVersions: [1, 2, 3],
+    supportedTaskVersions: [1],
+  };
+  const quota = {
+    protocolVersion: 3,
+    generatedAt: "2026-07-28T10:00:00Z",
+    sourceStatus: "partial",
+    limitsCollectedAt: "2026-07-28T09:45:00Z",
+    windows: [],
+    resetInventory: {
+      status: "cached",
+      availableCount: 0,
+      cachedAt: "2026-07-28T09:45:00Z",
+      items: [],
+    },
+    link: { computer: "online", codex: "stale" },
+    upstreamFreshness: {
+      usage: {
+        status: "cached",
+        lastAttemptAt: "2026-07-28T10:00:00Z",
+        lastSuccessAt: "2026-07-28T09:45:00Z",
+      },
+      resetInventory: {
+        status: "current",
+        lastAttemptAt: "2026-07-28T10:00:00Z",
+        lastSuccessAt: "2026-07-28T10:00:00Z",
+      },
+    },
+  };
+  const frame = {
+    type: "snapshot",
+    transportVersion: 1,
+    connectionId: "connection_0123456789",
+    sequence: 1,
+    generatedAtMs: 1785232800000,
+    quota,
+    tasks: {
+      protocolVersion: 1,
+      sequence: 1,
+      generatedAtMs: 1785232800000,
+      chatGptState: "running",
+      chatGptFocused: false,
+      tasks: [],
+    },
+  };
+
+  assert.equal(validate(hello), true, JSON.stringify(validate.errors, null, 2));
+  const refreshRequest = {
+    type: "refresh_request",
+    transportVersion: 1,
+    connectionId: "connection_0123456789",
+    scope: "quota",
+  };
+  assert.equal(
+    validate(refreshRequest),
+    true,
+    JSON.stringify(validate.errors, null, 2),
+  );
+  assert.equal(validate({ ...refreshRequest, reason: "vpn failed" }), false);
+  assert.equal(validate(frame), true, JSON.stringify(validate.errors, null, 2));
+  assert.equal(validate({ ...frame, quota: { ...quota, token: "private" } }), false);
+});

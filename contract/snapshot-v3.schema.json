@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://local.codex-quota.invalid/contract/snapshot-v3.schema.json",
+  "title": "Codex Quota Snapshot v3",
+  "description": "Quota v2 plus explicit Windows upstream freshness. Existing v2 clients never receive this new field.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "generatedAt", "sourceStatus", "limitsCollectedAt", "windows", "resetInventory", "link", "upstreamFreshness"],
+  "properties": {
+    "protocolVersion": { "const": 3 },
+    "generatedAt": { "$ref": "snapshot-v1.schema.json#/definitions/timestamp" },
+    "sourceStatus": { "enum": ["ok", "partial", "unavailable", "paused"] },
+    "limitsCollectedAt": {
+      "oneOf": [
+        { "$ref": "snapshot-v1.schema.json#/definitions/timestamp" },
+        { "type": "null" }
+      ]
+    },
+    "windows": {
+      "type": "array",
+      "items": { "$ref": "snapshot-v1.schema.json#/definitions/window" }
+    },
+    "resetInventory": { "$ref": "snapshot-v2.schema.json#/definitions/resetInventory" },
+    "link": { "$ref": "snapshot-v1.schema.json#/definitions/link" },
+    "upstreamFreshness": { "$ref": "#/definitions/upstreamFreshness" }
+  },
+  "definitions": {
+    "upstreamFreshness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["usage", "resetInventory"],
+      "properties": {
+        "usage": { "$ref": "#/definitions/datasetFreshness" },
+        "resetInventory": { "$ref": "#/definitions/datasetFreshness" }
+      }
+    },
+    "datasetFreshness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "lastAttemptAt", "lastSuccessAt"],
+      "properties": {
+        "status": { "enum": ["current", "cached", "unavailable"] },
+        "lastAttemptAt": {
+          "oneOf": [
+            { "$ref": "snapshot-v1.schema.json#/definitions/timestamp" },
+            { "type": "null" }
+          ]
+        },
+        "lastSuccessAt": {
+          "oneOf": [
+            { "$ref": "snapshot-v1.schema.json#/definitions/timestamp" },
+            { "type": "null" }
+          ]
+        }
+      }
+    }
+  }
+}

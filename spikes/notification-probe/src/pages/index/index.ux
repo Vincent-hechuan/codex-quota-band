@@ -1,0 +1,108 @@
+<template>
+  <div class="page">
+    <text class="title">提醒诊断</text>
+    <text class="status">{{vibrationText}}</text>
+    <text class="status">{{immediateText}}</text>
+    <text class="status">{{delayedText}}</text>
+    <text class="hint">前台应立即震动；关闭后再等 60 秒。</text>
+  </div>
+</template>
+
+<script>
+import notification from '@system.notification'
+import vibrator from '@system.vibrator'
+import plan from '../../common/notification-plan.cjs'
+
+export default {
+  private: {
+    scheduled: false,
+    vibrationText: '正在检查前台震动…',
+    immediateText: '正在调用前台通知…',
+    delayedText: '正在调用延时提醒…'
+  },
+
+  onShow() {
+    if (this.scheduled) return
+    this.scheduled = true
+
+    const canUse = (capability) => (
+      typeof this.$canIUse !== 'function' || this.$canIUse(capability)
+    )
+
+    if (canUse('@system.vibrator.vibrate')) {
+      try {
+        vibrator.vibrate({ mode: 'short' })
+        this.vibrationText = '前台震动：已请求（应立即感觉到）'
+      } catch (error) {
+        this.vibrationText = '前台震动：调用异常'
+      }
+    } else {
+      this.vibrationText = '前台震动：此设备未声明支持'
+    }
+
+    if (canUse('@system.notification.show')) {
+      try {
+        notification.show(plan.createImmediateProbe())
+        this.immediateText = '前台通知：已请求'
+      } catch (error) {
+        this.immediateText = '前台通知：调用异常'
+      }
+    } else {
+      this.immediateText = '前台通知：此设备未声明支持'
+    }
+
+    if (!canUse('@system.notification.postDelayedShow')) {
+      this.delayedText = '延时提醒：此设备未声明支持'
+      return
+    }
+
+    let settled = false
+    const timeout = setTimeout(() => {
+      if (!settled) this.delayedText = '延时提醒：3 秒无回执（不支持或挂起）'
+    }, 3000)
+
+    notification.postDelayedShow({
+      ...plan.createClosedAppProbe(),
+      success: () => {
+        settled = true
+        clearTimeout(timeout)
+        this.delayedText = '延时提醒：已安排，关闭后等待 60 秒'
+      },
+      fail: () => {
+        settled = true
+        clearTimeout(timeout)
+        this.delayedText = '延时提醒：设备拒绝安排'
+      }
+    })
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 212px;
+  height: 520px;
+  padding: 44px 20px;
+  background-color: #0d1012;
+}
+
+.title {
+  color: #f6fbff;
+  font-size: 38px;
+  font-weight: 700;
+}
+
+.status {
+  margin-top: 18px;
+  color: #67e7cf;
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.hint {
+  margin-top: 24px;
+  color: #c5cdd3;
+  font-size: 18px;
+  line-height: 26px;
+}
+</style>

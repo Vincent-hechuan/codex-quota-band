@@ -1,6 +1,6 @@
 {
   "name": "codex-quota-band",
-  "version": "0.3.1",
+  "version": "0.5.2",
   "private": true,
   "type": "module",
   "description": "Codex quota viewer for Xiaomi Smart Band 10",
@@ -12,6 +12,7 @@
     "prebuild": "npm run prepare-assets",
     "build": "aiot build",
     "postbuild": "npm run test:built",
+    "build:release": "npm run prepare-assets && aiot release && npm run test:built",
     "test:built": "node --test test/*.test.js"
   },
   "devDependencies": {

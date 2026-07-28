@@ -25,7 +25,8 @@ export async function withBuiltPage(callback, modules = {}) {
       return binding.__opts__.shown() ? render() : [];
     },
     __cf__(binding, render) {
-      const { __list__: items } = binding.__opts__.exp();
+      const value = binding.__opts__.exp();
+      const items = Array.isArray(value) ? value : value?.__list__ ?? [];
       return items.flatMap((item, index) => render(index, item));
     },
   };

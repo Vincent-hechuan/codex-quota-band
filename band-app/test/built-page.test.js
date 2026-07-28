@@ -36,7 +36,7 @@ test("first frame does not wait for storage or phone callbacks", async () => {
 
       component.onInit.call(viewModel);
 
-      assert.equal(storageRequests.length, 1);
+      assert.equal(storageRequests.length, 2);
       assert.equal(viewModel.statusText, "读取中");
       assert.equal(viewModel.statusTimeText, "");
       assert.match(viewModel.clockTimeText, /^\d{2}:\d{2}$/);
@@ -49,6 +49,60 @@ test("first frame does not wait for storage or phone callbacks", async () => {
           storageRequests.push(options);
         },
         set() {},
+      },
+    },
+  );
+});
+
+test("built page applies the privacy-minimized task snapshot beside quota", async () => {
+  const storageWrites = [];
+
+  await withBuiltPage(
+    (pageExports) => {
+      pageExports.entry(pageExports);
+      const component = pageExports.default;
+      const viewModel = createViewModel(component);
+      viewModel.requestNonce = "band-task-test";
+      viewModel.refreshing = true;
+
+      component.handleMessage.call(viewModel, {
+        type: "quota_error",
+        nonce: "band-task-test",
+        code: "quota_unavailable",
+        taskSnapshot: {
+          generatedAtMs: Date.now(),
+          chatGptState: "running",
+          tasks: [
+            {
+              title: "构建安装包",
+              state: "running",
+              activity: "executing_command",
+              updatedAtMs: Date.now() - 60_000,
+            },
+            {
+              title: "允许写入",
+              state: "needs_authorization",
+              updatedAtMs: Date.now() - 120_000,
+            },
+          ],
+        },
+      });
+
+      assert.equal(viewModel.taskSummaryText, "2项任务");
+      assert.equal(viewModel.hasTaskItems, true);
+      assert.equal(viewModel.taskItems[0].statusText, "需要授权");
+      assert.equal(viewModel.taskItems[0].groupText, "需要授权");
+      assert.equal(viewModel.taskItems[1].statusText, "处理中·执行命令");
+      assert.equal(viewModel.taskItems[1].groupText, "处理中");
+      assert.equal(storageWrites.length, 1);
+      assert.equal(component.template(viewModel).tag, "div");
+    },
+    {
+      storage: {
+        get() {},
+        set(options) {
+          storageWrites.push(options);
+        },
       },
     },
   );
@@ -108,10 +162,12 @@ test("built page applies Snapshot v1 to the visible weekly quota and reset inven
 
       assert.equal(viewModel.statusText, "已同步");
       assert.equal(viewModel.statusTone, "healthy");
-      assert.match(viewModel.statusTimeText, /^\d{2}:\d{2}$/);
+      assert.equal(viewModel.statusTimeText, "", "fresh snapshots do not repeat a sync clock");
       assert.equal(viewModel.resetCountText, "2");
       assert.equal(viewModel.resetExpiryText, "1月4日到期");
       assert.equal(viewModel.quotaRemainingText, "1%");
+      assert.equal(viewModel.quotaNumberText, "1");
+      assert.equal(viewModel.quotaUnitText, "%");
       assert.equal(viewModel.quotaResetText, "1月8日重置");
       assert.equal(viewModel.quotaTone, "danger");
       assert.equal(storageWrites.length, 1);
@@ -124,6 +180,61 @@ test("built page applies Snapshot v1 to the visible weekly quota and reset inven
           storageWrites.push(options);
         },
       },
+    },
+  );
+});
+
+test("built page turns an otherwise healthy snapshot into a cached relative status after one minute", async () => {
+  await withBuiltPage((pageExports) => {
+    pageExports.entry(pageExports);
+    const component = pageExports.default;
+    const viewModel = createViewModel(component);
+    viewModel.hasSnapshot = true;
+    viewModel.snapshotStatusText = "已同步";
+    viewModel.snapshotStatusTone = "healthy";
+    viewModel.lastSnapshotAtMs = Date.now() - 121_000;
+
+    component.updateSyncFreshness.call(viewModel);
+
+    assert.equal(viewModel.statusText, "缓存");
+    assert.equal(viewModel.statusTone, "warning");
+    assert.equal(viewModel.statusTimeText, "2分");
+  });
+});
+
+test("built page uses relative minutes for a locally restored cached snapshot", async () => {
+  await withBuiltPage((pageExports) => {
+    pageExports.entry(pageExports);
+    const component = pageExports.default;
+    const viewModel = createViewModel(component);
+    viewModel.lastSnapshotAtMs = Date.now() - 121_000;
+    viewModel.lastSyncClockText = "06:02";
+
+    component.showCachedStatus.call(viewModel, "显示缓存", "warning");
+
+    assert.equal(viewModel.statusText, "缓存");
+    assert.equal(viewModel.statusTone, "warning");
+    assert.equal(viewModel.statusTimeText, "2分");
+  });
+});
+
+test("wearable channel authorization errors direct users to reauthorize in Codex额度", async () => {
+  const connection = {};
+
+  await withBuiltPage(
+    (pageExports) => {
+      pageExports.entry(pageExports);
+      const component = pageExports.default;
+      const viewModel = createViewModel(component);
+
+      component.onInit.call(viewModel);
+      connection.onerror({ code: 1001 });
+
+      assert.equal(viewModel.statusText, "需重新授权");
+    },
+    {
+      interconnect: { instance: () => connection },
+      storage: { get() {}, set() {} },
     },
   );
 });

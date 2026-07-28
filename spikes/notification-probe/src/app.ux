@@ -1,0 +1,10 @@
+<script>
+export default {
+  onCreate() {
+    console.info('Codex 提醒测试已启动')
+  },
+  onError(error) {
+    console.error('Codex 提醒测试运行错误', error && error.message ? error.message : 'unknown')
+  }
+}
+</script>

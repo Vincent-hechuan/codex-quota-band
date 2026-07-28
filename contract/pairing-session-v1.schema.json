@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://local.codex-quota.invalid/contract/pairing-session-v1.schema.json",
+  "title": "Codex Quota Encrypted Pairing Session v1",
+  "oneOf": [
+    { "$ref": "#/definitions/pairRequest" },
+    { "$ref": "#/definitions/pairSuccess" }
+  ],
+  "definitions": {
+    "clientInstanceId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "pairRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "protocolVersion", "code", "clientInstanceId"],
+      "properties": {
+        "type": { "const": "pair_request" },
+        "protocolVersion": { "const": 1 },
+        "code": { "type": "string", "pattern": "^[0-9]{6}$" },
+        "clientInstanceId": { "$ref": "#/definitions/clientInstanceId" }
+      }
+    },
+    "pairSuccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "protocolVersion", "phoneToken"],
+      "properties": {
+        "type": { "const": "pair_success" },
+        "protocolVersion": { "const": 1 },
+        "phoneToken": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    }
+  }
+}

@@ -3,250 +3,140 @@ const WINDOW_STATUSES = ["current", "pending_sync", "unknown"];
 const RESET_STATUSES = ["cached", "cached_derived", "missing", "unavailable"];
 const COMPUTER_STATUSES = ["online", "offline", "paused"];
 const CODEX_STATUSES = ["ok", "unavailable", "stale", "format_changed"];
+const MAX_WINDOWS = 8;
+const MAX_RESET_ITEMS = 3;
+const MAX_RESET_COUNT = 99;
 
 function sanitizeSnapshotForBand(input, now = new Date()) {
-  if (!input || input.protocolVersion !== 1) {
+  if (!input || (input.protocolVersion !== 1 && input.protocolVersion !== 2)) {
     throw new Error("unsupported snapshot protocol");
   }
-
+  assertExactKeys(input, ["protocolVersion", "generatedAt", "sourceStatus", "limitsCollectedAt", "windows", "resetInventory", "link"]);
+  if (!Array.isArray(input.windows) || input.windows.length > MAX_WINDOWS) throw new Error("invalid quota windows");
   const nowMilliseconds = now.getTime();
-  const windows = Array.isArray(input.windows)
-    ? input.windows.map((window) => sanitizeWindow(window, nowMilliseconds)).filter(Boolean)
-    : [];
-  const rawItems = Array.isArray(input.resetInventory?.items)
-    ? input.resetInventory.items
-    : [];
-  const items = rawItems
-    .map(sanitizeResetItem)
-    .filter((item) => item && Date.parse(item.expiresAt) > nowMilliseconds)
-    .sort((left, right) => Date.parse(left.expiresAt) - Date.parse(right.expiresAt));
-  const rawCount = integerAtLeast(input.resetInventory?.availableCount, 0);
-  const availableCount = rawItems.length > 0 ? items.length : rawCount;
-  const inputResetStatus = enumValue(
-    input.resetInventory?.status,
-    RESET_STATUSES,
-    "unavailable",
-  );
-  const resetStatus =
-    items.length !== rawItems.length && ["cached", "cached_derived"].includes(inputResetStatus)
-      ? "cached_derived"
-      : inputResetStatus;
+  const windows = input.windows.map((window) => sanitizeWindow(window, nowMilliseconds)).filter(Boolean);
+  const resetInventory = sanitizeResetInventory(input.resetInventory, input.protocolVersion, nowMilliseconds);
 
   return {
-    protocolVersion: 1,
-    generatedAt: timestamp(input.generatedAt) ?? now.toISOString(),
-    sourceStatus: enumValue(input.sourceStatus, SOURCE_STATUSES, "unavailable"),
-    limitsCollectedAt: timestamp(input.limitsCollectedAt),
+    protocolVersion: 2,
+    generatedAt: requireTimestamp(input.generatedAt, "generated time"),
+    sourceStatus: requireEnum(input.sourceStatus, SOURCE_STATUSES, "source status"),
+    limitsCollectedAt: nullableTimestamp(input.limitsCollectedAt, "limits collection time"),
     windows,
-    resetInventory: {
-      status: resetStatus,
-      availableCount,
-      cachedAt: timestamp(input.resetInventory?.cachedAt),
-      items,
-    },
-    link: {
-      computer: enumValue(input.link?.computer, COMPUTER_STATUSES, "offline"),
-      codex: enumValue(input.link?.codex, CODEX_STATUSES, "unavailable"),
-    },
+    resetInventory,
+    link: sanitizeLink(input.link),
+  };
+}
+
+function sanitizeResetInventory(value, version, nowMilliseconds) {
+  assertExactKeys(value, ["status", "availableCount", "cachedAt", "items"]);
+  if (!Array.isArray(value.items) || value.items.length > MAX_RESET_ITEMS) throw new Error("invalid reset list");
+  const availableCount = nullableInteger(value.availableCount, 0, MAX_RESET_COUNT, "reset count");
+  const items = value.items
+    .map((item) => sanitizeResetItem(item, version))
+    .filter((item) => Date.parse(item.expiresAt) > nowMilliseconds)
+    .sort((left, right) => Date.parse(left.expiresAt) - Date.parse(right.expiresAt));
+  return {
+    status: requireEnum(value.status, RESET_STATUSES, "reset status"),
+    availableCount,
+    cachedAt: nullableTimestamp(value.cachedAt, "reset cache time"),
+    items,
+  };
+}
+
+function sanitizeResetItem(item, version) {
+  const expected = version === 1
+    ? ["id", "title", "status", "expiresAt"]
+    : ["status", "grantedAt", "expiresAt"];
+  assertExactKeys(item, expected);
+  const grantedAt = version === 1 ? null : nullableTimestamp(item.grantedAt, "grant time");
+  if (version === 1) {
+    if (!validText(item.id, 256) || !validText(item.title, 128)) throw new Error("invalid legacy reset card");
+  }
+  if (item.status !== "available") throw new Error("invalid reset card status");
+  return { status: "available", grantedAt, expiresAt: requireTimestamp(item.expiresAt, "expiry time") };
+}
+
+function sanitizeWindow(window, nowMilliseconds) {
+  assertExactKeys(window, ["id", "name", "windowMinutes", "remainingPercent", "resetsAt", "status"]);
+  if (!validText(window.id, 128) || !validText(window.name, 64)) throw new Error("invalid quota window");
+  const minutes = requireInteger(window.windowMinutes, 1, 100_000_000, "window minutes");
+  const resetsAt = requireTimestamp(window.resetsAt, "quota reset time");
+  const remaining = nullableInteger(window.remainingPercent, 0, 100, "remaining percentage");
+  const expired = Date.parse(resetsAt) <= nowMilliseconds;
+  return {
+    id: window.id,
+    name: window.name,
+    windowMinutes: minutes,
+    remainingPercent: expired ? null : remaining,
+    resetsAt,
+    status: expired ? "pending_sync" : requireEnum(window.status, WINDOW_STATUSES, "window status"),
+  };
+}
+
+function sanitizeLink(value) {
+  assertExactKeys(value, ["computer", "codex"]);
+  return {
+    computer: requireEnum(value.computer, COMPUTER_STATUSES, "computer status"),
+    codex: requireEnum(value.codex, CODEX_STATUSES, "Codex status"),
   };
 }
 
 function createBandView(snapshot, now = new Date()) {
   const sanitized = sanitizeSnapshotForBand(snapshot, now);
   const status = statusPresentation(sanitized);
-  const hasVisibleData =
-    sanitized.windows.length > 0 || Number.isInteger(sanitized.resetInventory.availableCount);
-  const syncTimeText = hasVisibleData ? formatDateTime(sanitized.generatedAt) : "";
-  const syncStatusTimeText = hasVisibleData
-    ? formatSyncTime(sanitized.generatedAt, now)
-    : "";
+  const hasVisibleData = sanitized.windows.length > 0 || Number.isInteger(sanitized.resetInventory.availableCount);
   const windows = sanitized.windows.map((window) => ({
-    id: window.id,
     label: windowLabel(window),
-    remainingPercent:
-      window.status === "current" && Number.isInteger(window.remainingPercent)
-        ? window.remainingPercent
-        : null,
-    remainingText:
-      window.status === "current" && Number.isInteger(window.remainingPercent)
-        ? `${window.remainingPercent}%`
-        : "--",
+    remainingText: window.status === "current" && Number.isInteger(window.remainingPercent) ? `${window.remainingPercent}%` : "--",
     resetText: `${formatDate(window.resetsAt)}重置`,
     tone: window.status === "current" ? quotaTone(window.remainingPercent) : "unknown",
   }));
-  const primaryQuota =
-    windows.find((window) => window.label === "周额度") ?? windows[0] ?? null;
-  const quotaRemainingPercent = primaryQuota?.remainingPercent ?? null;
-  const quotaToneValue = primaryQuota?.tone ?? "unknown";
+  const primaryQuota = windows.find((window) => window.label === "周额度") ?? windows[0] ?? null;
+  const nearest = sanitized.resetInventory.items[0] ?? null;
   return {
-    sourceStatus: sanitized.sourceStatus,
     statusText: status.text,
     statusTone: status.tone,
-    syncTimeText,
-    statusTimeText: syncStatusTimeText
-      ? status.cache
-        ? `上次${syncStatusTimeText}`
-        : syncStatusTimeText
-      : "--:--",
-    windows,
-    quotaRemainingPercent,
+    statusTimeText: hasVisibleData ? formatSyncTime(sanitized.generatedAt, now) : "",
     quotaRemainingText: primaryQuota?.remainingText ?? "--",
     quotaResetText: primaryQuota?.resetText ?? "暂无额度数据",
-    quotaTone: sanitized.link.computer === "offline" ? "offline" : quotaToneValue,
-    resetCountText: Number.isInteger(sanitized.resetInventory.availableCount)
-      ? String(sanitized.resetInventory.availableCount)
-      : "--",
-    resetHintText: sanitized.resetInventory.items.length
-      ? `最近到期 ${formatDate(sanitized.resetInventory.items[0].expiresAt)}`
-      : ["missing", "unavailable"].includes(sanitized.resetInventory.status)
-        ? "暂无重置数据"
-        : "暂无可用重置",
+    quotaTone: sanitized.link.computer === "offline" ? "offline" : primaryQuota?.tone ?? "unknown",
+    resetCountText: Number.isInteger(sanitized.resetInventory.availableCount) ? String(sanitized.resetInventory.availableCount) : "--",
+    resetTone: resetTone(sanitized.resetInventory.availableCount),
+    resetExpiryText: nearest
+      ? `${formatDate(nearest.expiresAt)}到期`
+      : ["missing", "unavailable"].includes(sanitized.resetInventory.status) ? "暂无重置数据" : "暂无可用重置",
+    resetManyText: sanitized.resetInventory.items.length > 1 ? `共 ${sanitized.resetInventory.items.length} 张` : "",
   };
 }
 
 function errorStatusText(code) {
-  const messages = {
-    pairing_required: "需要配对",
-    pairing_revoked: "配对已撤销",
-    private_network_required: "局域网不可用",
-    windows_unreachable: "电脑未连接",
-    windows_response_error: "电脑响应异常",
-    snapshot_too_large: "额度数据异常",
-    unsupported_snapshot_protocol: "请更新应用",
-  };
-  return messages[code] ?? "同步失败";
-}
-
-function sanitizeWindow(window, nowMilliseconds) {
-  if (!window || typeof window.id !== "string" || window.id.length === 0) return null;
-  const minutes = integerAtLeast(window.windowMinutes, 1);
-  const resetsAt = timestamp(window.resetsAt);
-  if (minutes === null || resetsAt === null) return null;
-  const isExpired = Date.parse(resetsAt) <= nowMilliseconds;
-  const remaining = integerBetween(window.remainingPercent, 0, 100);
-  return {
-    id: window.id.slice(0, 128),
-    name: typeof window.name === "string" ? window.name.slice(0, 64) : "custom",
-    windowMinutes: minutes,
-    remainingPercent: isExpired ? null : remaining,
-    resetsAt,
-    status: isExpired
-      ? "pending_sync"
-      : enumValue(window.status, WINDOW_STATUSES, "unknown"),
-  };
-}
-
-function sanitizeResetItem(item) {
-  const expiresAt = timestamp(item?.expiresAt);
-  if (
-    !item ||
-    typeof item.id !== "string" ||
-    typeof item.title !== "string" ||
-    item.status !== "available" ||
-    expiresAt === null
-  ) {
-    return null;
-  }
-  return {
-    id: item.id.slice(0, 256),
-    title: item.title.slice(0, 128),
-    status: "available",
-    expiresAt,
-  };
+  return ({ pairing_required: "需要配对", pairing_revoked: "配对已撤销", private_network_required: "局域网不可用", windows_unreachable: "电脑未连接", windows_response_error: "电脑响应异常", snapshot_too_large: "额度数据异常", unsupported_snapshot_protocol: "请更新应用" })[code] ?? "同步失败";
 }
 
 function statusPresentation(snapshot) {
-  if (snapshot.sourceStatus === "paused") {
-    return { text: "同步已暂停", tone: "warning", cache: true };
-  }
-  if (snapshot.link.computer === "offline") {
-    return { text: "离线", tone: "danger", cache: true };
-  }
-  if (snapshot.link.codex === "format_changed") {
-    return { text: "数据格式变化", tone: "danger", cache: true };
-  }
-  if (snapshot.link.codex === "stale") {
-    return { text: "显示缓存", tone: "warning", cache: true };
-  }
-  if (snapshot.sourceStatus === "unavailable") {
-    return { text: "额度不可用", tone: "danger", cache: true };
-  }
-  if (snapshot.sourceStatus === "partial") {
-    return { text: "缓存", tone: "warning", cache: true };
-  }
-  return { text: "已同步", tone: "healthy", cache: false };
+  if (snapshot.sourceStatus === "paused") return { text: "同步已暂停", tone: "warning" };
+  if (snapshot.link.computer === "offline") return { text: "离线", tone: "danger" };
+  if (snapshot.link.codex === "format_changed") return { text: "数据格式变化", tone: "danger" };
+  if (snapshot.link.codex === "stale") return { text: "缓存", tone: "warning" };
+  if (snapshot.sourceStatus === "unavailable") return { text: "额度不可用", tone: "danger" };
+  if (snapshot.sourceStatus === "partial") return { text: "缓存", tone: "warning" };
+  return { text: "已同步", tone: "healthy" };
 }
 
-function windowLabel(window) {
-  if (window.name === "weekly" || window.windowMinutes === 10_080) return "周额度";
-  if (window.name === "five_hour" || window.windowMinutes === 300) return "5 小时额度";
-  return `${window.windowMinutes} 分钟额度`;
-}
+function windowLabel(window) { return window.name === "weekly" || window.windowMinutes === 10_080 ? "周额度" : `${window.windowMinutes} 分钟额度`; }
+function quotaTone(value) { return !Number.isInteger(value) ? "unknown" : value < 20 ? "danger" : value <= 50 ? "warning" : "healthy"; }
+function resetTone(value) { return !Number.isInteger(value) ? "unknown" : value === 0 ? "danger" : "healthy"; }
+function formatClock(value = new Date()) { const date = new Date(value); const pad = (n) => String(n).padStart(2, "0"); return Number.isNaN(date.getTime()) ? { timeText: "--:--" } : { timeText: `${pad(date.getHours())}:${pad(date.getMinutes())}` }; }
+function formatDateTime(value) { const date = new Date(value); const pad = (n) => String(n).padStart(2, "0"); return Number.isNaN(date.getTime()) ? "--" : `${date.getMonth() + 1}月${date.getDate()}日 ${pad(date.getHours())}:${pad(date.getMinutes())}`; }
+function formatSyncTime(value, now) { const date = new Date(value); const current = new Date(now); const pad = (n) => String(n).padStart(2, "0"); if (Number.isNaN(date.getTime())) return "--:--"; const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`; return date.getFullYear() === current.getFullYear() && date.getMonth() === current.getMonth() && date.getDate() === current.getDate() ? time : `${date.getMonth() + 1}月${date.getDate()}日 ${time}`; }
+function formatDate(value) { const date = new Date(value); return Number.isNaN(date.getTime()) ? "--" : `${date.getMonth() + 1}月${date.getDate()}日`; }
+function requireTimestamp(value, name) { if (typeof value !== "string" || value.length > 64 || !/^\d{4}-\d{2}-\d{2}T/.test(value) || Number.isNaN(Date.parse(value)) || Date.parse(value) < 0) throw new Error(`invalid ${name}`); return new Date(value).toISOString(); }
+function nullableTimestamp(value, name) { return value === null ? null : requireTimestamp(value, name); }
+function requireEnum(value, allowed, name) { if (!allowed.includes(value)) throw new Error(`invalid ${name}`); return value; }
+function requireInteger(value, minimum, maximum, name) { if (!Number.isInteger(value) || value < minimum || value > maximum) throw new Error(`invalid ${name}`); return value; }
+function nullableInteger(value, minimum, maximum, name) { return value === null ? null : requireInteger(value, minimum, maximum, name); }
+function validText(value, maximum) { return typeof value === "string" && value.length > 0 && Array.from(value).length <= maximum && !/[\u0000-\u001f\u007f]/.test(value); }
+function assertExactKeys(value, keys) { if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length !== keys.length || Object.keys(value).some((key) => !keys.includes(key))) throw new Error("unexpected summary fields"); }
 
-function quotaTone(value) {
-  if (!Number.isInteger(value)) return "unknown";
-  if (value < 20) return "danger";
-  if (value <= 50) return "warning";
-  return "healthy";
-}
-
-function formatClock(value = new Date()) {
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return { timeText: "--:--", dateText: "日期不可用" };
-  const pad = (number) => String(number).padStart(2, "0");
-  const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
-  return {
-    timeText: `${pad(date.getHours())}:${pad(date.getMinutes())}`,
-    dateText: `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`,
-  };
-}
-
-function formatDateTime(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "--";
-  const pad = (number) => String(number).padStart(2, "0");
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-function formatSyncTime(value, now) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "--:--";
-  const pad = (number) => String(number).padStart(2, "0");
-  const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  const current = now instanceof Date ? now : new Date(now);
-  const sameDay = !Number.isNaN(current.getTime())
-    && date.getFullYear() === current.getFullYear()
-    && date.getMonth() === current.getMonth()
-    && date.getDate() === current.getDate();
-  return sameDay ? time : `${date.getMonth() + 1}月${date.getDate()}日 ${time}`;
-}
-
-function formatDate(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "--";
-  return `${date.getMonth() + 1}月${date.getDate()}日`;
-}
-
-function timestamp(value) {
-  if (typeof value !== "string" || Number.isNaN(Date.parse(value))) return null;
-  return new Date(value).toISOString();
-}
-
-function enumValue(value, allowed, fallback) {
-  return allowed.includes(value) ? value : fallback;
-}
-
-function integerAtLeast(value, minimum) {
-  return Number.isInteger(value) && value >= minimum ? value : null;
-}
-
-function integerBetween(value, minimum, maximum) {
-  return Number.isInteger(value) && value >= minimum && value <= maximum ? value : null;
-}
-
-module.exports = {
-  createBandView,
-  errorStatusText,
-  formatClock,
-  sanitizeSnapshotForBand,
-};
+module.exports = { createBandView, errorStatusText, formatClock, sanitizeSnapshotForBand };

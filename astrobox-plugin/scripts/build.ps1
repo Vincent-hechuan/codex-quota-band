@@ -6,11 +6,12 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $workspaceRoot = Split-Path -Parent $projectRoot
-$env:CARGO_TARGET_DIR = Join-Path $env:LOCALAPPDATA "Temp\codex-quota-rust-target"
+$env:CARGO_TARGET_DIR = Join-Path $env:LOCALAPPDATA "Temp\codex-quota-rust-gnullvm-build"
 $cargo = Join-Path $env:USERPROFILE ".cargo\bin\cargo.exe"
+$toolchain = "+stable-x86_64-pc-windows-gnullvm"
 $profile = if ($Release) { "release" } else { "debug" }
 $cargoArguments = @(
-    "+stable-x86_64-pc-windows-gnu",
+    $toolchain,
     "build",
     "--target",
     "wasm32-wasip2"
