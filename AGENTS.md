@@ -10,7 +10,7 @@ CodexQuota 是一个 Android + Windows + 小米手环 10 的本地额度和任�
 
 `ChatGPT Windows Hook → Windows 原生托盘程序 → 局域网加密同步 → Android Codex额度 → 小米运动健康/Wearable SDK → 手环 RPK`
 
-- 当前主线版本：`0.5.2 / versionCode 502`，已生成本地正式候选并完成自动验证；Android 已覆盖升级，Windows 与手环待正常升级验收。仍未提交、推送或发布。
+- 当前开发版本：`0.6.0 / versionCode 600`，三端本地候选已生成并通过自动验证与真机验收；仍未提交、推送或发布。
 - 三端当前验收状态、临时版本差异和未决冲突以 `docs/current-status.md` 为唯一摘要；不要从单端
   构建记录推断三端已经一致。
 - 新架构只面向 Android；不为 iPhone 增加兼容层，也不把旧 AstroBox 桥接重新放回日常链路。

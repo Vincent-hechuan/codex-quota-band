@@ -1230,6 +1230,26 @@ mod tests {
     }
 
     #[test]
+    fn five_hour_window_is_identified_by_duration_in_either_official_slot() {
+        let now = DateTime::parse_from_rfc3339("2026-07-24T10:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let value = json!({
+            "used_percent": 32,
+            "limit_window_seconds": 18_000,
+            "reset_at": 1785258157
+        });
+
+        for slot in ["primary", "secondary"] {
+            let window = normalize_window(slot, &value, now).expect("valid five-hour window");
+            assert_eq!(window.name, "five_hour");
+            assert_eq!(window.window_minutes, 300);
+            assert_eq!(window.remaining_percent, Some(68));
+            assert_eq!(window.id, format!("codex:{slot}:300"));
+        }
+    }
+
+    #[test]
     fn malformed_or_fractional_percentages_are_not_guessed() {
         let now = DateTime::parse_from_rfc3339("2026-07-24T10:00:00Z")
             .unwrap()
@@ -1480,20 +1500,26 @@ mod tests {
             "AUTH_UNAVAILABLE"
         );
         assert_eq!(
-            UpstreamConfirmationErrorCode::from_refresh_error(DirectResetRefreshError::Unauthorized)
-                .diagnostic_label(),
+            UpstreamConfirmationErrorCode::from_refresh_error(
+                DirectResetRefreshError::Unauthorized
+            )
+            .diagnostic_label(),
             "AUTH_REJECTED"
         );
         assert_eq!(
-            UpstreamConfirmationErrorCode::from_refresh_error(DirectResetRefreshError::HttpStatus(429))
-                .diagnostic_label(),
+            UpstreamConfirmationErrorCode::from_refresh_error(DirectResetRefreshError::HttpStatus(
+                429
+            ))
+            .diagnostic_label(),
             "UPSTREAM_HTTP"
         );
-        assert!(!UpstreamConfirmationErrorCode::from_refresh_error(
-            DirectResetRefreshError::ResponseFormatChanged
-        )
-        .diagnostic_label()
-        .contains("token"));
+        assert!(
+            !UpstreamConfirmationErrorCode::from_refresh_error(
+                DirectResetRefreshError::ResponseFormatChanged
+            )
+            .diagnostic_label()
+            .contains("token")
+        );
     }
 
     fn block_file(entry_size: usize, blocks: usize, file_number: u16) -> Vec<u8> {

@@ -90,9 +90,12 @@ function createBandView(snapshot, now = new Date()) {
     label: windowLabel(window),
     remainingText: window.status === "current" && Number.isInteger(window.remainingPercent) ? `${window.remainingPercent}%` : "--",
     resetText: `${formatDate(window.resetsAt)}重置`,
+    compactResetText: window.status === "current" ? `${formatTime(window.resetsAt)}重置` : "待同步",
+    remainingPercent: window.status === "current" && Number.isInteger(window.remainingPercent) ? window.remainingPercent : 0,
     tone: window.status === "current" ? quotaTone(window.remainingPercent) : "unknown",
   }));
-  const primaryQuota = windows.find((window) => window.label === "周额度") ?? windows[0] ?? null;
+  const primaryQuota = windows.find((window) => window.label === "周额度") ?? null;
+  const fiveHourQuota = windows.find((window) => window.label === "5小时额度") ?? null;
   const nearest = sanitized.resetInventory.items[0] ?? null;
   return {
     statusText: status.text,
@@ -101,12 +104,15 @@ function createBandView(snapshot, now = new Date()) {
     quotaRemainingText: primaryQuota?.remainingText ?? "--",
     quotaResetText: primaryQuota?.resetText ?? "暂无额度数据",
     quotaTone: sanitized.link.computer === "offline" ? "offline" : primaryQuota?.tone ?? "unknown",
+    weeklyProgressPercent: primaryQuota?.remainingPercent ?? 0,
+    fiveHourRemainingText: fiveHourQuota?.remainingText ?? "--",
+    fiveHourResetText: fiveHourQuota?.compactResetText ?? "暂无数据",
+    fiveHourTone: sanitized.link.computer === "offline" ? "offline" : fiveHourQuota?.tone ?? "unknown",
     resetCountText: Number.isInteger(sanitized.resetInventory.availableCount) ? String(sanitized.resetInventory.availableCount) : "--",
     resetTone: resetTone(sanitized.resetInventory.availableCount),
     resetExpiryText: nearest
       ? `${formatDate(nearest.expiresAt)}到期`
       : ["missing", "unavailable"].includes(sanitized.resetInventory.status) ? "暂无重置数据" : "暂无可用重置",
-    resetManyText: sanitized.resetInventory.items.length > 1 ? `共 ${sanitized.resetInventory.items.length} 张` : "",
   };
 }
 
@@ -124,12 +130,25 @@ function statusPresentation(snapshot) {
   return { text: "已同步", tone: "healthy" };
 }
 
-function windowLabel(window) { return window.name === "weekly" || window.windowMinutes === 10_080 ? "周额度" : `${window.windowMinutes} 分钟额度`; }
+function windowLabel(window) {
+  if (window.name === "five_hour" && window.windowMinutes === 300) return "5小时额度";
+  return window.name === "weekly" || window.windowMinutes === 10_080 ? "周额度" : `${window.windowMinutes} 分钟额度`;
+}
 function quotaTone(value) { return !Number.isInteger(value) ? "unknown" : value < 20 ? "danger" : value <= 50 ? "warning" : "healthy"; }
 function resetTone(value) { return !Number.isInteger(value) ? "unknown" : value === 0 ? "danger" : "healthy"; }
+function formatElapsedAge(elapsedMilliseconds) {
+  const elapsedMinutes = Math.floor(Math.max(0, Number(elapsedMilliseconds) || 0) / 60_000);
+  if (elapsedMinutes < 1) return "刚刚";
+  if (elapsedMinutes < 60) return `${elapsedMinutes}分`;
+  if (elapsedMinutes < 24 * 60) return `${Math.floor(elapsedMinutes / 60)}小时`;
+  if (elapsedMinutes < 7 * 24 * 60) return `${Math.floor(elapsedMinutes / (24 * 60))}天`;
+  const elapsedWeeks = Math.floor(elapsedMinutes / (7 * 24 * 60));
+  return elapsedWeeks > 99 ? "99周+" : `${elapsedWeeks}周`;
+}
 function formatClock(value = new Date()) { const date = new Date(value); const pad = (n) => String(n).padStart(2, "0"); return Number.isNaN(date.getTime()) ? { timeText: "--:--" } : { timeText: `${pad(date.getHours())}:${pad(date.getMinutes())}` }; }
 function formatDateTime(value) { const date = new Date(value); const pad = (n) => String(n).padStart(2, "0"); return Number.isNaN(date.getTime()) ? "--" : `${date.getMonth() + 1}月${date.getDate()}日 ${pad(date.getHours())}:${pad(date.getMinutes())}`; }
 function formatSyncTime(value, now) { const date = new Date(value); const current = new Date(now); const pad = (n) => String(n).padStart(2, "0"); if (Number.isNaN(date.getTime())) return "--:--"; const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`; return date.getFullYear() === current.getFullYear() && date.getMonth() === current.getMonth() && date.getDate() === current.getDate() ? time : `${date.getMonth() + 1}月${date.getDate()}日 ${time}`; }
+function formatTime(value) { const date = new Date(value); const pad = (n) => String(n).padStart(2, "0"); return Number.isNaN(date.getTime()) ? "--:--" : `${pad(date.getHours())}:${pad(date.getMinutes())}`; }
 function formatDate(value) { const date = new Date(value); return Number.isNaN(date.getTime()) ? "--" : `${date.getMonth() + 1}月${date.getDate()}日`; }
 function requireTimestamp(value, name) { if (typeof value !== "string" || value.length > 64 || !/^\d{4}-\d{2}-\d{2}T/.test(value) || Number.isNaN(Date.parse(value)) || Date.parse(value) < 0) throw new Error(`invalid ${name}`); return new Date(value).toISOString(); }
 function nullableTimestamp(value, name) { return value === null ? null : requireTimestamp(value, name); }
@@ -139,4 +158,4 @@ function nullableInteger(value, minimum, maximum, name) { return value === null 
 function validText(value, maximum) { return typeof value === "string" && value.length > 0 && Array.from(value).length <= maximum && !/[\u0000-\u001f\u007f]/.test(value); }
 function assertExactKeys(value, keys) { if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length !== keys.length || Object.keys(value).some((key) => !keys.includes(key))) throw new Error("unexpected summary fields"); }
 
-module.exports = { createBandView, errorStatusText, formatClock, sanitizeSnapshotForBand };
+module.exports = { createBandView, errorStatusText, formatClock, formatElapsedAge, sanitizeSnapshotForBand };

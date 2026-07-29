@@ -1,6 +1,6 @@
 # CodexQuota 开发与交付指南
 
-本文是 `0.5.2` 本地正式候选的日常开发入口。产品取舍以根目录 `CONTEXT.md` 为准，Agent 工作规则以 `AGENTS.md` 为准，代码分层见 `docs/architecture.md`。
+本文是 `0.6.0` 本地候选的日常开发入口。产品取舍以根目录 `CONTEXT.md` 为准，Agent 工作规则以 `AGENTS.md` 为准，代码分层见 `docs/architecture.md`。
 
 本指南覆盖 Windows、Android 与手环 RPK 三端。开始新的主任务前，先阅读
 `docs/current-status.md`，其中列出临时版本差异和必须先由用户确认的跨端冲突。
@@ -59,6 +59,10 @@ $env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
 ..\spikes\android-background-probe\gradlew.bat -p . :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --console=plain
 ```
 
+如需在没有真实 5 小时上游数据时检查 Android 排版，可在本地构建命令中临时加入
+`-PcodexQuotaDemoFiveHour=true`。该参数只把手机界面显示为 68%，不会写入额度缓存或下发手环；
+它默认关闭，正式候选必须在不带该参数的情况下重新构建。
+
 手环 RPK：
 
 ```powershell
@@ -94,10 +98,10 @@ npm run build:release
 
 ## 交付边界
 
-- 当前 `0.5.2` 只生成本地正式候选包；不要把本地候选写成已发布版本。
+- 当前 `0.6.0` 只生成本地候选包；不要把本地候选写成已发布版本。
 - Windows、Android APK、手环 RPK 的产品版本必须一致；协议版本单独维护在 `contract/`。
 - 手环 UI 修改必须先给用户看 `212×520` 预览，确认后才改 RPK 源码。
-- 用户已确认 `0.5.0` 三端候选验收通过；但提交、推送和 GitHub Release 仍须由用户另行要求。当前代码与配置已统一为 `0.5.2`，发布前须完成升级验收。发布前展示版本、改动、测试、产物和 SHA-256。
+- 用户已确认 `0.6.0` 三端候选验收通过；但提交、推送和 GitHub Release 仍须由用户另行要求。发布前展示版本、改动、测试、产物和 SHA-256。
 - Debug APK/RPK 仅用于开发和真机验证；正式产物应使用固定发布签名，私钥不得进入仓库。
 
 ## 文档职责
@@ -106,6 +110,5 @@ npm run build:release
 - `AGENTS.md`：未来 AI Agent 的工作规则和快速命令。
 - `docs/architecture.md`：当前代码架构、协议和数据流。
 - `docs/build-verification.md`：实际构建、测试和产物证据。
-- `docs/device-acceptance.md`：设备验收记录；其中旧 0.3.x 部分保留为历史证据。
-- `docs/android-quota-v2-handoff.md`：Windows 已就绪的重置卡发卡/到期时间接入契约、Android 实施顺序与验证清单。
+- `docs/device-acceptance.md`：公开的设备验收结论。
 - `CHANGELOG.md`：用户可见的已发布变化；本地候选未获发布授权前不要把它当作正式发行说明。

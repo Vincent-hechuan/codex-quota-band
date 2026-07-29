@@ -18,6 +18,8 @@ val releaseKeyAlias = localProperties.getProperty("codexQuotaReleaseKeyAlias")
 val releaseKeyPassword = localProperties.getProperty("codexQuotaReleaseKeyPassword")
 val hasReleaseSigning =
   listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword).all { !it.isNullOrBlank() }
+val demoFiveHourQuota =
+  providers.gradleProperty("codexQuotaDemoFiveHour").orElse("false").map(String::toBoolean).get()
 
 android {
   namespace = "com.codex.quota.android"
@@ -27,8 +29,9 @@ android {
     applicationId = "com.codex.quota.android"
     minSdk = 26
     targetSdk = 36
-    versionCode = 502
-    versionName = "0.5.2"
+    versionCode = 600
+    versionName = "0.6.0"
+    buildConfigField("boolean", "DEMO_FIVE_HOUR_QUOTA", demoFiveHourQuota.toString())
   }
 
   if (hasReleaseSigning) {
@@ -61,7 +64,7 @@ android {
   buildFeatures {
     compose = true
     aidl = false
-    buildConfig = false
+    buildConfig = true
     shaders = false
   }
 

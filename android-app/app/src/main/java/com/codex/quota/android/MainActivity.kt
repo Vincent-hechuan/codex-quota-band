@@ -23,13 +23,37 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.core.net.toUri
 import com.codex.quota.android.diagnostics.DiagnosticReport
-import com.codex.quota.android.ui.AppUiState
-import com.codex.quota.android.ui.bandConnectionCheckResultLabel
 import com.codex.quota.android.permissions.shouldRequestNotificationPermission
+import com.codex.quota.android.ui.AppUiState
 import com.codex.quota.android.ui.CodexQuotaApp
+import com.codex.quota.android.ui.FiveHourQuotaAvailability
 import com.codex.quota.android.ui.NotificationSettingsStore
+import com.codex.quota.android.ui.WeeklyQuota
+import com.codex.quota.android.ui.bandConnectionCheckResultLabel
+import com.codex.quota.android.updates.AppRelease
+import com.codex.quota.android.updates.GitHubReleaseTransport
+import com.codex.quota.android.updates.ReleaseUpdateService
+import com.codex.quota.android.updates.SharedPreferencesUpdateCheckSchedule
+import com.codex.quota.android.updates.UpdateCheckResult
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
+  private val updateScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+  private var availableUpdate by mutableStateOf<AppRelease?>(null)
+  private var updateCheckRunning = false
+  private val appVersion by lazy { packageManager.getPackageInfo(packageName, 0).versionName ?: "unknown" }
+  private val releaseUpdateService by lazy {
+    ReleaseUpdateService(
+      currentVersion = appVersion,
+      transport = GitHubReleaseTransport(appVersion),
+      schedule = SharedPreferencesUpdateCheckSchedule(applicationContext),
+    )
+  }
   private val notificationPermissionLauncher =
     registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
   private var pendingDiagnosticJson: String? = null
@@ -53,10 +77,25 @@ class MainActivity : ComponentActivity() {
       val settingsStore = remember { NotificationSettingsStore(applicationContext) }
       val runtimeRepository = remember { (application as CodexQuotaApplication).runtimeRepository }
       val runtimeState by runtimeRepository.state.collectAsState()
+      val displayState =
+        if (BuildConfig.DEMO_FIVE_HOUR_QUOTA) {
+          runtimeState.copy(
+            fiveHourQuota =
+              WeeklyQuota(
+                remainingPercent = 68,
+                resetsAtMs = System.currentTimeMillis() + THREE_HOURS_MS,
+              ),
+            fiveHourQuotaAvailability = FiveHourQuotaAvailability.Available,
+          )
+        } else {
+          runtimeState
+        }
       val quotaApplication = application as CodexQuotaApplication
       var notificationSettings by remember { mutableStateOf(settingsStore.load()) }
       CodexQuotaApp(
-        state = runtimeState,
+        state = displayState,
+        appVersion = appVersion,
+        availableUpdate = availableUpdate,
         notificationSettings = notificationSettings,
         onNotificationSettingsChange = { updatedSettings ->
           notificationSettings = updatedSettings
@@ -73,6 +112,12 @@ class MainActivity : ComponentActivity() {
           }
         },
         onExportDiagnostics = { requestDiagnosticExport(runtimeState) },
+        onCheckForUpdates = { checkForUpdates(manual = true) },
+        onDismissUpdate = { availableUpdate = null },
+        onOpenUpdate = { release ->
+          availableUpdate = null
+          openRelease(release)
+        },
         onRemoveTask = { conversationId -> runtimeRepository.removeTaskFromBoard(conversationId) },
         onRefreshSync = quotaApplication::refreshSync,
       )
@@ -92,11 +137,17 @@ class MainActivity : ComponentActivity() {
   override fun onStart() {
     super.onStart()
     (application as CodexQuotaApplication).setAndroidForeground(true)
+    checkForUpdates(manual = false)
   }
 
   override fun onStop() {
     (application as CodexQuotaApplication).setAndroidForeground(false)
     super.onStop()
+  }
+
+  override fun onDestroy() {
+    updateScope.cancel()
+    super.onDestroy()
   }
 
   @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -162,7 +213,37 @@ class MainActivity : ComponentActivity() {
     diagnosticExportLauncher.launch("codexquota-diagnostics-${System.currentTimeMillis()}.json")
   }
 
+  private fun checkForUpdates(manual: Boolean) {
+    if (updateCheckRunning) {
+      if (manual) Toast.makeText(this, "正在检查更新", Toast.LENGTH_SHORT).show()
+      return
+    }
+    updateCheckRunning = true
+    updateScope.launch {
+      val result =
+        withContext(Dispatchers.IO) {
+          releaseUpdateService.check(manual = manual, nowMs = System.currentTimeMillis())
+        }
+      updateCheckRunning = false
+      when (result) {
+        is UpdateCheckResult.Available -> availableUpdate = result.release
+        UpdateCheckResult.UpToDate -> if (manual) Toast.makeText(this@MainActivity, "已是最新版本", Toast.LENGTH_SHORT).show()
+        UpdateCheckResult.Failed -> if (manual) Toast.makeText(this@MainActivity, "检查失败，请稍后重试", Toast.LENGTH_SHORT).show()
+        UpdateCheckResult.Skipped -> Unit
+      }
+    }
+  }
+
+  private fun openRelease(release: AppRelease) {
+    val intent = Intent(Intent.ACTION_VIEW, release.releaseUrl.toUri())
+    runCatching { startActivity(intent) }
+      .onFailure {
+        Toast.makeText(this, "无法打开下载页面", Toast.LENGTH_SHORT).show()
+      }
+  }
+
   private companion object {
+    const val THREE_HOURS_MS = 3 * 60 * 60_000L
     const val PERMISSION_PREFERENCES_NAME = "permission-prompts"
     const val KEY_NOTIFICATION_PERMISSION_REQUESTED = "notification-permission-requested"
   }

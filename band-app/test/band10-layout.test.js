@@ -83,13 +83,13 @@ test("built Band 10 page uses two vertically swipable pages with one accent dot 
   });
 });
 
-test("built release package advances over the installed 0.5.1 candidate", async () => {
+test("built release package advances to the unified 0.6.0 candidate", async () => {
   const manifest = JSON.parse(await readFile(builtManifestUrl, "utf8"));
-  assert.equal(manifest.versionName, "0.5.2");
+  assert.equal(manifest.versionName, "0.6.0");
   assert.equal(
     manifest.versionCode,
-    502,
-    "the unified release package must upgrade over the installed 0.5.1 candidate",
+    600,
+    "the unified release package must upgrade over the installed 0.5.2 candidate",
   );
 });
 
@@ -101,7 +101,7 @@ test("built Band 10 pages share one header rhythm without a task title", async (
     const tags = collectTags(frame);
 
     assert.equal(tags[0], "div");
-    assert.equal(tags.filter((tag) => tag === "progress").length, 0);
+    assert.equal(tags.filter((tag) => tag === "progress").length, 1);
     assert.equal(rulesForClass(styles, "ring-track"), undefined);
     assert.equal(countClass(frame, "page-title"), 0, "the task page shares the overview header without a title");
     assert.deepEqual(
@@ -130,15 +130,24 @@ test("built Band 10 pages share one header rhythm without a task title", async (
     assert.equal(rulesForClass(styles, "quota-number")?.fontSize, "96px");
     assert.equal(rulesForClass(styles, "quota-number-compact")?.fontSize, "80px");
     assert.equal(rulesForClass(styles, "quota-unit")?.fontSize, "34px");
-    assert.equal(rulesForClass(styles, "quota-unit")?.color, "#f7f8f9");
+    assert.equal(rulesForClass(styles, "quota-unit")?.color, undefined, "the percent sign inherits the same quota tone as the number");
     assert.equal(rulesForClass(styles, "quota-unit")?.marginBottom, "8px");
     assert.equal(rulesForClass(styles, "divider")?.height, "1px");
     assert.equal(rulesForClass(styles, "divider")?.top, "280px");
-    assert.equal(rulesForClass(styles, "reset-section")?.top, "306px");
-    assert.equal(rulesForClass(styles, "reset-number")?.fontSize, "58px");
+    assert.equal(rulesForClass(styles, "weekly-section")?.top, "297px");
+    assert.equal(rulesForClass(styles, "weekly-progress")?.height, "8px");
+    assert.equal(rulesForClass(styles, "weekly-progress")?.width, "172px");
+    assert.equal(rulesForClass(styles, "weekly-progress")?.layerColor, "#354248");
+    assert.equal(rulesForClass(styles, "weekly-progress-healthy")?.color, "#59ddb8");
+    assert.equal(rulesForClass(styles, "weekly-progress-warning")?.color, "#ffd05e");
+    assert.equal(rulesForClass(styles, "weekly-progress-danger")?.color, "#ff7e7e");
+    assert.equal(rulesForClass(styles, "weekly-progress-offline")?.color, "#b5bec1");
+    assert.equal(rulesForClass(styles, "weekly-progress-unknown")?.color, "#b5bec1");
+    assert.equal(rulesForClass(styles, "divider-secondary")?.top, "387px");
+    assert.equal(rulesForClass(styles, "reset-section")?.top, "405px");
+    assert.equal(rulesForClass(styles, "reset-number")?.fontSize, "22px");
     assert.equal(rulesForClass(styles, "reset-unit")?.fontSize, "22px");
-    assert.equal(rulesForClass(styles, "reset-unit")?.marginBottom, "8px");
-    assert.equal(rulesForClass(styles, "reset-expiry")?.fontSize, "20px");
+    assert.equal(rulesForClass(styles, "reset-expiry")?.fontSize, "15px");
   });
 });
 
@@ -147,7 +156,7 @@ test("built Band 10 content groups are explicitly vertical on device", async () 
     pageExports.entry(pageExports);
     const styles = pageExports.default.style;
 
-    for (const className of ["quota-section", "reset-section", "task-section"]) {
+    for (const className of ["quota-section", "weekly-section", "reset-section", "task-section"]) {
       assert.equal(
         rulesForClass(styles, className)?.flexDirection,
         "column",

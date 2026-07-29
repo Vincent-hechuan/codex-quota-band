@@ -29,6 +29,12 @@ enum class QuotaLevel {
   Unavailable,
 }
 
+enum class FiveHourQuotaAvailability {
+  Available,
+  Pending,
+  Missing,
+}
+
 enum class TaskStatusEmphasis {
   Default,
   Attention,
@@ -103,6 +109,8 @@ data class AppUiState(
   val usageFreshness: UpstreamFreshnessStatus? = null,
   val resetFreshness: UpstreamFreshnessStatus? = null,
   val lastTransportDataAtMs: Long? = null,
+  val fiveHourQuota: WeeklyQuota? = null,
+  val fiveHourQuotaAvailability: FiveHourQuotaAvailability = FiveHourQuotaAvailability.Missing,
 ) {
   companion object {
     fun empty() =
@@ -171,6 +179,18 @@ fun resetExpiresAtLabel(epochMs: Long): String =
 fun weeklyResetDateLabel(epochMs: Long, zoneId: ZoneId = ZoneId.systemDefault()): String =
   EXPIRY_FORMATTER.format(Instant.ofEpochMilli(epochMs).atZone(zoneId)) + "重置"
 
+fun fiveHourResetLabel(
+  quota: WeeklyQuota?,
+  availability: FiveHourQuotaAvailability,
+  zoneId: ZoneId = ZoneId.systemDefault(),
+): String =
+  when {
+    quota != null && availability == FiveHourQuotaAvailability.Available ->
+      TIME_FORMATTER.format(Instant.ofEpochMilli(quota.resetsAtMs).atZone(zoneId)) + "重置"
+    availability == FiveHourQuotaAvailability.Pending -> "待同步"
+    else -> "暂无数据"
+  }
+
 fun remainingTimeLabel(expiresAtMs: Long, nowMs: Long): String {
   val remainingMs = expiresAtMs - nowMs
   if (remainingMs <= 0) return "已到期"
@@ -188,11 +208,13 @@ private fun compactElapsedLabel(thenMs: Long, nowMs: Long): String {
     elapsedMinutes < 1 -> "刚刚"
     elapsedMinutes < 60 -> "${elapsedMinutes}分"
     elapsedMinutes < 24 * 60 -> "${elapsedMinutes / 60}小时"
-    elapsedMinutes < 100 * 24 * 60 -> "${elapsedMinutes / (24 * 60)}天"
-    else -> "99天+"
+    elapsedMinutes < 7 * 24 * 60 -> "${elapsedMinutes / (24 * 60)}天"
+    elapsedMinutes < 100 * 7 * 24 * 60 -> "${elapsedMinutes / (7 * 24 * 60)}周"
+    else -> "99周+"
   }
 }
 
 private val EXPIRY_FORMATTER = DateTimeFormatter.ofPattern("M月d日")
+private val TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm")
 private val RESET_CARD_FORMATTER = DateTimeFormatter.ofPattern("M月d日 HH:mm")
 private val RESET_CARD_ZONE = ZoneId.of("Asia/Shanghai")

@@ -58,6 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -77,7 +78,7 @@ import com.codex.quota.android.domain.SyncedTask
 import com.codex.quota.android.domain.TaskBoard
 import com.codex.quota.android.domain.TaskState
 import com.codex.quota.android.protocol.ChatGptState
-import com.codex.quota.android.protocol.UpstreamFreshnessStatus
+import com.codex.quota.android.updates.AppRelease
 import kotlinx.coroutines.delay
 
 private enum class AppTab(val label: String, val icon: ImageVector) {
@@ -90,12 +91,17 @@ private enum class AppTab(val label: String, val icon: ImageVector) {
 fun CodexQuotaApp(
   state: AppUiState,
   modifier: Modifier = Modifier,
+  appVersion: String = "0.6.0",
+  availableUpdate: AppRelease? = null,
   notificationSettings: NotificationSettings = NotificationSettings.Default,
   onNotificationSettingsChange: (NotificationSettings) -> Unit = {},
   onOpenNotificationSettings: () -> Unit = {},
   onOpenPairingCamera: () -> Unit = {},
   onCheckBandConnection: () -> Unit = {},
   onExportDiagnostics: () -> Unit = {},
+  onCheckForUpdates: () -> Unit = {},
+  onDismissUpdate: () -> Unit = {},
+  onOpenUpdate: (AppRelease) -> Unit = {},
   onRemoveTask: (String) -> Unit = {},
   onRefreshSync: () -> Boolean = { false },
 ) {
@@ -179,6 +185,8 @@ fun CodexQuotaApp(
               onOpenPairingCamera = onOpenPairingCamera,
               onCheckBandConnection = onCheckBandConnection,
               onExportDiagnostics = onExportDiagnostics,
+              appVersion = appVersion,
+              onCheckForUpdates = onCheckForUpdates,
               nowMs = nowMs,
               modifier = contentModifier,
             )
@@ -194,6 +202,14 @@ fun CodexQuotaApp(
               .navigationBarsPadding()
               .padding(horizontal = 15.dp, vertical = 13.dp),
         )
+        availableUpdate?.let { release ->
+          UpdateAvailableDialog(
+            currentVersion = appVersion,
+            release = release,
+            onDismiss = onDismissUpdate,
+            onOpenRelease = { onOpenUpdate(release) },
+          )
+        }
       }
     }
   }
@@ -270,9 +286,6 @@ private fun HomeScreen(
         ResetCreditsSection(
           state.resetAvailableCount,
           state.resetCredits,
-          nowMs,
-          state.resetFreshness,
-          state.syncState,
         )
       }
     }
@@ -348,25 +361,71 @@ private fun OfflineCallout() {
 
 @Composable
 private fun QuotaHeroCard(state: AppUiState) {
+  val muted = state.syncState != SyncState.Synced
   CodexGlassCard(
     modifier = Modifier.fillMaxWidth(),
     shape = RoundedCornerShape(CodexTokens.Radius.Hero),
   ) {
     Column(modifier = Modifier.padding(start = 19.dp, top = 20.dp, end = 19.dp, bottom = 17.dp)) {
-      Text("周额度", fontSize = CodexTokens.Type.SectionTitle, fontWeight = FontWeight.SemiBold)
-      Box(modifier = Modifier.fillMaxWidth().height(191.dp), contentAlignment = Alignment.Center) {
+      Text("5小时额度", fontSize = CodexTokens.Type.SectionTitle, fontWeight = FontWeight.SemiBold)
+      Box(modifier = Modifier.fillMaxWidth().height(182.dp), contentAlignment = Alignment.Center) {
         QuotaRing(
-          quota = state.weeklyQuota,
+          quota = state.fiveHourQuota,
           size = 176.dp,
-          muted = state.syncState != SyncState.Synced,
+          muted = muted,
         )
       }
-      HorizontalDivider(color = dividerColor())
+      Text(
+        fiveHourResetLabel(state.fiveHourQuota, state.fiveHourQuotaAvailability),
+        fontSize = CodexTokens.Type.Supporting,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+      HorizontalDivider(modifier = Modifier.padding(top = 14.dp), color = dividerColor())
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Text("周额度", fontSize = CodexTokens.Type.SectionTitle, fontWeight = FontWeight.SemiBold)
+        Text(
+          state.weeklyQuota?.let { "${it.remainingPercent}%" } ?: "--",
+          fontSize = CodexTokens.Type.SectionTitle,
+          fontWeight = FontWeight.Bold,
+          color = if (muted) cachedColor() else quotaColor(state.weeklyQuota?.level ?: QuotaLevel.Unavailable),
+        )
+      }
+      QuotaProgressBar(
+        quota = state.weeklyQuota,
+        muted = muted,
+        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+      )
       Text(
         state.weeklyQuota?.let { weeklyResetDateLabel(it.resetsAtMs) } ?: "重置时间待同步",
-        modifier = Modifier.padding(top = 11.dp),
-        fontSize = CodexTokens.Type.Body,
-        fontWeight = FontWeight.Normal,
+        modifier = Modifier.padding(top = 9.dp),
+        fontSize = CodexTokens.Type.Supporting,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
+  }
+}
+
+@Composable
+private fun QuotaProgressBar(
+  quota: WeeklyQuota?,
+  muted: Boolean,
+  modifier: Modifier = Modifier,
+) {
+  val progress = (quota?.remainingPercent ?: 0).coerceIn(0, 100) / 100f
+  val progressColor = if (muted) cachedColor() else quotaColor(quota?.level ?: QuotaLevel.Unavailable)
+  val trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .14f)
+  Canvas(modifier = modifier.height(8.dp)) {
+    val radius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+    drawRoundRect(color = trackColor, cornerRadius = radius)
+    if (quota != null && progress > 0f) {
+      drawRoundRect(
+        color = progressColor,
+        size = Size(size.width * progress, size.height),
+        cornerRadius = radius,
       )
     }
   }
@@ -472,9 +531,6 @@ private fun CompactTaskRow(task: SyncedTask, nowMs: Long, hideTaskTitles: Boolea
 private fun ResetCreditsSection(
   availableCount: Int?,
   credits: List<ResetCredit>,
-  nowMs: Long,
-  resetFreshness: UpstreamFreshnessStatus?,
-  syncState: SyncState,
 ) {
   val nearest = credits.minByOrNull(ResetCredit::expiresAtMs)
   CodexGlassCard(
@@ -482,61 +538,30 @@ private fun ResetCreditsSection(
     shape = RoundedCornerShape(CodexTokens.Radius.Card),
     shadowElevation = 1.dp,
   ) {
-    Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp)) {
-      Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+    Row(
+      modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 13.dp),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Column(modifier = Modifier.weight(1f)) {
         Text("可用重置", fontSize = CodexTokens.Type.SectionTitle, fontWeight = FontWeight.SemiBold)
-        Text(availableCount?.let { "$it 次" } ?: "--", fontSize = CodexTokens.Type.SectionTitle, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-      }
-      Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
         Text(
-          nearest?.let { "最近 ${resetDateLabel(it.expiresAtMs)}" }
+          nearest?.let { resetDateLabel(it.expiresAtMs) }
             ?: if (availableCount == 0) "当前没有可用重置" else "暂无重置数据",
-          modifier = Modifier.weight(1f),
+          modifier = Modifier.padding(top = 3.dp),
           fontSize = CodexTokens.Type.Supporting,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
         )
-        resetFreshnessLabel(resetFreshness, syncState)?.let { label ->
-          Text(
-            label,
-            modifier = Modifier.padding(start = 8.dp),
-            fontSize = CodexTokens.Type.Caption,
-            fontWeight = FontWeight.SemiBold,
-            color = if (label == "已同步") MaterialTheme.colorScheme.primary else cachedColor(),
-            maxLines = 1,
-          )
-        }
       }
-      if (credits.isNotEmpty()) {
-        HorizontalDivider(color = dividerColor())
-        Column(modifier = Modifier.padding(top = 5.dp)) {
-          credits.forEachIndexed { index, credit ->
-            if (index > 0) HorizontalDivider(color = dividerColor())
-            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-              Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-              ) {
-                Text(credit.label, fontSize = CodexTokens.Type.Supporting, fontWeight = FontWeight.SemiBold)
-                Text(remainingTimeLabel(credit.expiresAtMs, nowMs), fontSize = CodexTokens.Type.Caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
-              }
-              Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 3.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-              ) {
-                Text(resetGrantedAtLabel(credit.grantedAtMs), fontSize = CodexTokens.Type.Caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(resetExpiresAtLabel(credit.expiresAtMs), fontSize = CodexTokens.Type.Caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
-              }
-            }
-          }
-        }
-      }
+      Text(
+        availableCount?.let { "$it 次" } ?: "--",
+        modifier = Modifier.padding(start = 12.dp),
+        fontSize = 18.sp,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+      )
     }
   }
 }
@@ -698,6 +723,8 @@ private fun SettingsScreen(
   onOpenPairingCamera: () -> Unit,
   onCheckBandConnection: () -> Unit,
   onExportDiagnostics: () -> Unit,
+  appVersion: String,
+  onCheckForUpdates: () -> Unit,
   nowMs: Long,
   modifier: Modifier,
 ) {
@@ -742,7 +769,49 @@ private fun SettingsScreen(
         SettingsActionRow("导出本地诊断", "仅含版本、连接状态与同步时间", "›", onExportDiagnostics)
       }
     }
+    item {
+      SettingsGroup("关于") {
+        SettingsActionRow("检查更新", "当前版本 $appVersion", "›", onCheckForUpdates)
+      }
+    }
   }
+}
+
+@Composable
+private fun UpdateAvailableDialog(
+  currentVersion: String,
+  release: AppRelease,
+  onDismiss: () -> Unit,
+  onOpenRelease: () -> Unit,
+) {
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("发现新版本 ${release.version}") },
+    text = {
+      Column {
+        Text(
+          "当前版本 $currentVersion",
+          fontSize = CodexTokens.Type.Supporting,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+          release.notes.ifBlank { "前往 GitHub Releases 查看本次更新说明。" },
+          modifier = Modifier.padding(top = 10.dp),
+          fontSize = CodexTokens.Type.Body,
+        )
+      }
+    },
+    confirmButton = {
+      TextButton(onClick = onOpenRelease) {
+        Text("前往下载")
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) {
+        Text("稍后")
+      }
+    },
+  )
 }
 
 @Composable
@@ -878,7 +947,7 @@ private fun QuotaRing(quota: WeeklyQuota?, size: Dp, muted: Boolean = false) {
         modifier =
           Modifier.offset(
             x = if (quota != null && size >= 100.dp) 4.dp else 0.dp,
-            y = if (quota != null && size >= 100.dp) (-4).dp else 0.dp,
+            y = if (quota != null && size >= 100.dp) (-2).dp else 0.dp,
           ),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -1083,18 +1152,6 @@ private fun emptyTaskLabel(state: AppUiState): String = when {
 
 private fun displayTaskTitle(task: SyncedTask, hidden: Boolean): String = TaskTitleFormatter.display(task.title, hidden)
 
-private fun resetFreshnessLabel(
-  freshness: UpstreamFreshnessStatus?,
-  syncState: SyncState,
-): String? =
-  when {
-    freshness == null -> null
-    syncState == SyncState.Offline -> "缓存"
-    freshness == UpstreamFreshnessStatus.Current -> "已同步"
-    freshness == UpstreamFreshnessStatus.Cached -> "缓存"
-    else -> "待同步"
-  }
-
 private fun taskMetadata(task: SyncedTask, nowMs: Long): String {
   val status = taskStateLabel(task.state)
   val activity = when (task.activity) {
@@ -1133,6 +1190,8 @@ private fun CodexQuotaAppPreview() {
         DeviceConnections(DeviceLinkState.Connected, DeviceLinkState.Connected, DeviceLinkState.Connected),
         ChatGptState.Running,
         listOf(SyncedTask("task-1", "整理 Android 页面信息", TaskState.Running, SafeActivity.ModifyingFiles, now - 60_000)),
+        fiveHourQuota = WeeklyQuota(68, now + 3 * 60 * 60_000),
+        fiveHourQuotaAvailability = FiveHourQuotaAvailability.Available,
       ),
   )
 }

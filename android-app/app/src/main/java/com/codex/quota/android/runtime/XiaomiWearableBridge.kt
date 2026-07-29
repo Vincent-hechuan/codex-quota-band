@@ -1,6 +1,7 @@
 package com.codex.quota.android.runtime
 
 import android.content.Context
+import com.codex.quota.android.BuildConfig
 import com.codex.quota.android.domain.SafeActivity
 import com.codex.quota.android.domain.SyncedTask
 import com.codex.quota.android.domain.TaskBoard
@@ -11,6 +12,7 @@ import com.codex.quota.android.protocol.CodexLinkStatus
 import com.codex.quota.android.protocol.ComputerLinkStatus
 import com.codex.quota.android.protocol.QuotaSnapshot
 import com.codex.quota.android.protocol.QuotaSourceStatus
+import com.codex.quota.android.protocol.QuotaWindow
 import com.codex.quota.android.protocol.QuotaWindowStatus
 import com.codex.quota.android.protocol.ResetInventoryStatus
 import com.codex.quota.android.protocol.TaskSnapshot
@@ -173,7 +175,10 @@ class XiaomiWearableBridge(
     val nonce = root["nonce"]?.jsonPrimitive?.content ?: return
     if (nonce.isBlank() || nonce.length > 64) return
     val node = activeNode ?: return
-    val snapshot = repository.latestQuotaSnapshot()
+    val snapshot =
+      repository.latestQuotaSnapshot()?.let {
+        if (BuildConfig.DEMO_FIVE_HOUR_QUOTA) it.withDemoFiveHourQuota() else it
+      }
     val taskSnapshot = buildBandTaskSnapshot(repository.latestTaskSnapshot())
     val payload =
       if (snapshot == null) {
@@ -271,6 +276,22 @@ internal fun buildBandQuotaSnapshot(
     )
   }
 
+internal fun QuotaSnapshot.withDemoFiveHourQuota(
+  nowMs: Long = System.currentTimeMillis(),
+): QuotaSnapshot =
+  copy(
+    windows =
+      windows.filterNot { it.name == "five_hour" || it.windowMinutes == FIVE_HOUR_WINDOW_MINUTES } +
+        QuotaWindow(
+          id = "demo-five-hour",
+          name = "five_hour",
+          windowMinutes = FIVE_HOUR_WINDOW_MINUTES,
+          remainingPercent = DEMO_FIVE_HOUR_PERCENT,
+          resetsAtMs = nowMs + DEMO_FIVE_HOUR_RESET_DELAY_MS,
+          status = QuotaWindowStatus.Current,
+        ),
+  )
+
 private fun formatBandTimestamp(value: Long): String =
   java.time.OffsetDateTime.ofInstant(java.time.Instant.ofEpochMilli(value), java.time.ZoneOffset.UTC)
     .format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)
@@ -327,6 +348,9 @@ private fun CodexLinkStatus.bandValue() =
 
 private const val BAND_QUOTA_VERSION = 2
 private const val BAND_CURRENT_QUOTA_MAX_AGE_MS = 60_000L
+private const val FIVE_HOUR_WINDOW_MINUTES = 300
+private const val DEMO_FIVE_HOUR_PERCENT = 68
+private const val DEMO_FIVE_HOUR_RESET_DELAY_MS = 3 * 60 * 60_000L
 
 internal fun buildBandTaskSnapshot(snapshot: TaskSnapshot?): JsonElement {
   if (snapshot == null) return JsonNull
