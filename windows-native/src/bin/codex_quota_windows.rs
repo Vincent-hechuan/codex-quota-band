@@ -136,9 +136,9 @@ impl AppController {
         let last_upstream_confirmation_error = self.last_upstream_confirmation_error.clone();
         self.runtime.spawn(async move {
             let refreshed = tokio::task::spawn_blocking(|| {
-                QuotaCollector::discover()
-                    .ok()
-                    .map(|collector| collector.refresh_upstream_freshness_with_diagnostic(Utc::now()))
+                QuotaCollector::discover().ok().map(|collector| {
+                    collector.refresh_upstream_freshness_with_diagnostic(Utc::now())
+                })
             })
             .await
             .ok()
@@ -529,7 +529,8 @@ unsafe fn show_tray_menu(window: HWND) {
     let confirmation_in_progress = APP
         .get()
         .is_some_and(|app| app.upstream_confirmation_in_progress());
-    let (upstream_label, _) = upstream_usage_label(&upstream, confirmation_in_progress);
+    let (upstream_label, _) =
+        upstream_usage_detail(&upstream, confirmation_in_progress, Utc::now());
     append_menu(menu, MF_STRING | MF_DISABLED, 0, "服务运行中");
     append_menu(
         menu,
@@ -1507,6 +1508,43 @@ fn upstream_usage_label(
     }
 }
 
+fn upstream_usage_detail(
+    freshness: &UpstreamFreshness,
+    confirmation_in_progress: bool,
+    now: chrono::DateTime<Utc>,
+) -> (String, u32) {
+    let (label, color) = upstream_usage_label(freshness, confirmation_in_progress);
+    if confirmation_in_progress || freshness.usage.status != UpstreamFreshnessStatus::Cached {
+        return (label.to_string(), color);
+    }
+    let Some(last_success) = freshness
+        .usage
+        .last_success_at
+        .as_deref()
+        .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok())
+        .map(|value| value.with_timezone(&Utc))
+    else {
+        return (label.to_string(), color);
+    };
+    let elapsed_ms = now
+        .signed_duration_since(last_success)
+        .num_milliseconds()
+        .max(0) as u64;
+    (format!("{label} {}", elapsed_age_label(elapsed_ms)), color)
+}
+
+fn elapsed_age_label(elapsed_ms: u64) -> String {
+    let elapsed_minutes = elapsed_ms / 60_000;
+    match elapsed_minutes {
+        0 => "刚刚".to_string(),
+        1..=59 => format!("{elapsed_minutes}分"),
+        60..=1_439 => format!("{}小时", elapsed_minutes / 60),
+        1_440..=10_079 => format!("{}天", elapsed_minutes / (24 * 60)),
+        10_080..=1_007_999 => format!("{}周", elapsed_minutes / (7 * 24 * 60)),
+        _ => "99周+".to_string(),
+    }
+}
+
 fn upstream_confirmation_guidance(error: Option<UpstreamConfirmationErrorCode>) -> &'static str {
     match error {
         None => "区分本地连接与额度上游确认状态",
@@ -1516,15 +1554,11 @@ fn upstream_confirmation_guidance(error: Option<UpstreamConfirmationErrorCode>) 
         Some(UpstreamConfirmationErrorCode::AuthRejected) => {
             "最近确认失败 AUTH_REJECTED：请重新登录 Codex"
         }
-        Some(UpstreamConfirmationErrorCode::Network) => {
-            "最近确认失败 NETWORK：检查网络或代理"
-        }
+        Some(UpstreamConfirmationErrorCode::Network) => "最近确认失败 NETWORK：检查网络或代理",
         Some(UpstreamConfirmationErrorCode::ResponseFormat) => {
             "最近确认失败 RESPONSE_FORMAT：请导出本地诊断"
         }
-        Some(UpstreamConfirmationErrorCode::UpstreamHttp) => {
-            "最近确认失败 UPSTREAM_HTTP：稍后重试"
-        }
+        Some(UpstreamConfirmationErrorCode::UpstreamHttp) => "最近确认失败 UPSTREAM_HTTP：稍后重试",
         Some(UpstreamConfirmationErrorCode::LocalWrite) => {
             "最近确认失败 LOCAL_WRITE：请导出本地诊断"
         }
@@ -1585,7 +1619,7 @@ unsafe fn paint_diagnostics_window(window: HWND) {
         .get()
         .is_some_and(|app| app.upstream_confirmation_in_progress());
     let (upstream_label, upstream_color) =
-        upstream_usage_label(&upstream, confirmation_in_progress);
+        upstream_usage_detail(&upstream, confirmation_in_progress, Utc::now());
     draw_minimal_diagnostic_row(dc, panel, "Windows 服务", "运行中", UI_WAITING, 0);
     draw_minimal_diagnostic_row(
         dc,
@@ -1599,7 +1633,14 @@ unsafe fn paint_diagnostics_window(window: HWND) {
         },
         1,
     );
-    draw_minimal_diagnostic_row(dc, panel, "Codex 额度源", upstream_label, upstream_color, 2);
+    draw_minimal_diagnostic_row(
+        dc,
+        panel,
+        "Codex 额度源",
+        &upstream_label,
+        upstream_color,
+        2,
+    );
     let button = diagnostics_refresh_button_rect(client);
     draw_surface(dc, button, UI_PRIMARY, UI_PRIMARY, 17);
     SetTextColor(dc, UI_SURFACE);
@@ -2562,6 +2603,16 @@ mod ui_contract_tests {
     }
 
     #[test]
+    fn diagnostics_cache_age_uses_the_shared_minute_hour_day_and_week_units() {
+        assert_eq!(elapsed_age_label(0), "刚刚");
+        assert_eq!(elapsed_age_label(59 * 60_000), "59分");
+        assert_eq!(elapsed_age_label(415 * 60_000), "6小时");
+        assert_eq!(elapsed_age_label(3 * 24 * 60 * 60_000), "3天");
+        assert_eq!(elapsed_age_label(9 * 24 * 60 * 60_000), "1周");
+        assert_eq!(elapsed_age_label(800 * 24 * 60 * 60_000), "99周+");
+    }
+
+    #[test]
     fn diagnostics_exposes_only_safe_upstream_confirmation_guidance() {
         assert_eq!(
             upstream_confirmation_guidance(Some(UpstreamConfirmationErrorCode::AuthRejected)),
@@ -2571,10 +2622,10 @@ mod ui_contract_tests {
             upstream_confirmation_guidance(Some(UpstreamConfirmationErrorCode::Network)),
             "最近确认失败 NETWORK：检查网络或代理"
         );
-        assert!(!upstream_confirmation_guidance(Some(
-            UpstreamConfirmationErrorCode::ResponseFormat
-        ))
-        .contains("token"));
+        assert!(
+            !upstream_confirmation_guidance(Some(UpstreamConfirmationErrorCode::ResponseFormat))
+                .contains("token")
+        );
     }
 
     #[test]

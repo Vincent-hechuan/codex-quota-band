@@ -15,6 +15,7 @@ import com.codex.quota.android.protocol.UpstreamFreshnessStatus
 import com.codex.quota.android.ui.AppUiState
 import com.codex.quota.android.ui.DeviceConnections
 import com.codex.quota.android.ui.DeviceLinkState
+import com.codex.quota.android.ui.FiveHourQuotaAvailability
 import com.codex.quota.android.ui.ResetCredit
 import com.codex.quota.android.ui.SyncState
 import com.codex.quota.android.ui.WeeklyQuota
@@ -197,6 +198,9 @@ class RuntimeStateRepository(
         usageFreshness = usageFreshness?.status,
         resetFreshness = quota?.upstreamFreshness?.resetInventory?.status,
         lastTransportDataAtMs = lastTransportDataAtMs,
+        fiveHourQuota = quota?.fiveHourQuota(nowMs),
+        fiveHourQuotaAvailability =
+          quota?.fiveHourQuotaAvailability(nowMs) ?: FiveHourQuotaAvailability.Missing,
       )
   }
 
@@ -230,6 +234,32 @@ class RuntimeStateRepository(
       }
       ?.let { WeeklyQuota(remainingPercent = it.remainingPercent!!, resetsAtMs = it.resetsAtMs) }
 
+  private fun QuotaSnapshot.fiveHourQuota(nowMs: Long): WeeklyQuota? =
+    windows
+      .singleOrNull { it.name == "five_hour" && it.windowMinutes == FIVE_HOUR_WINDOW_MINUTES }
+      ?.takeIf {
+        it.status == QuotaWindowStatus.Current &&
+          it.remainingPercent != null &&
+          it.resetsAtMs > nowMs
+      }
+      ?.let { WeeklyQuota(remainingPercent = it.remainingPercent!!, resetsAtMs = it.resetsAtMs) }
+
+  private fun QuotaSnapshot.fiveHourQuotaAvailability(nowMs: Long): FiveHourQuotaAvailability {
+    val window =
+      windows.singleOrNull {
+        it.name == "five_hour" && it.windowMinutes == FIVE_HOUR_WINDOW_MINUTES
+      } ?: return FiveHourQuotaAvailability.Missing
+    return if (
+      window.status == QuotaWindowStatus.Current &&
+        window.remainingPercent != null &&
+        window.resetsAtMs > nowMs
+    ) {
+      FiveHourQuotaAvailability.Available
+    } else {
+      FiveHourQuotaAvailability.Pending
+    }
+  }
+
   private fun ResetInventoryStatus.isTrusted(): Boolean =
     this == ResetInventoryStatus.Cached || this == ResetInventoryStatus.CachedDerived
 
@@ -240,6 +270,7 @@ class RuntimeStateRepository(
 
   private companion object {
     const val WEEKLY_WINDOW_MINUTES = 10_080
+    const val FIVE_HOUR_WINDOW_MINUTES = 300
     const val CURRENT_QUOTA_MAX_AGE_MS = 60_000L
   }
 }

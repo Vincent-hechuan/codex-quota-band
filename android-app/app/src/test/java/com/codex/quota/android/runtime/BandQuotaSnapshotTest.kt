@@ -124,4 +124,39 @@ class BandQuotaSnapshotTest {
     assertFalse(payload.toString().contains("upstreamFreshness"))
     assertFalse(payload.toString().contains("lastSuccessAt"))
   }
+
+  @Test
+  fun demoFiveHourQuotaForBandAddsOnlyTheDisplayWindow() {
+    val weekly =
+      QuotaWindow(
+        id = "weekly",
+        name = "weekly",
+        windowMinutes = 10_080,
+        remainingPercent = 81,
+        resetsAtMs = 9_000_000,
+        status = QuotaWindowStatus.Current,
+      )
+    val original =
+      QuotaSnapshot(
+        generatedAtMs = 1_000,
+        sourceStatus = QuotaSourceStatus.Ok,
+        limitsCollectedAtMs = 900,
+        windows = listOf(weekly),
+        resetInventory = ResetInventorySnapshot(ResetInventoryStatus.Cached, 1, 900, emptyList()),
+        computerLink = ComputerLinkStatus.Online,
+        codexLink = CodexLinkStatus.Ok,
+      )
+
+    val demo = original.withDemoFiveHourQuota(nowMs = 2_000)
+
+    assertEquals(listOf(weekly), original.windows)
+    assertEquals(2, demo.windows.size)
+    assertEquals(weekly, demo.windows.first())
+    assertEquals("five_hour", demo.windows.last().name)
+    assertEquals(300, demo.windows.last().windowMinutes)
+    assertEquals(68, demo.windows.last().remainingPercent)
+    assertEquals(10_802_000, demo.windows.last().resetsAtMs)
+    assertEquals(QuotaWindowStatus.Current, demo.windows.last().status)
+    assertEquals(original.resetInventory, demo.resetInventory)
+  }
 }

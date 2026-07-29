@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="212" height="520" viewBox="0 0 212 520" role="img" aria-labelledby="title description">
+  <title id="title">Codex额度手环五小时主额度预览</title>
+  <desc id="description">五小时额度为主数字、周额度为横向进度条、可用重置为紧凑信息的212乘520两页手环首页。</desc>
+  <rect width="212" height="520" rx="46" fill="#0d1012"/>
+
+  <text x="106" y="25" text-anchor="middle" fill="#f7f8f9" font-family="Microsoft YaHei, sans-serif" font-size="24" font-weight="700">15:42</text>
+  <rect x="48" y="41" width="116" height="36" rx="18" fill="#0b2a25" stroke="#278f76" stroke-width="1"/>
+  <text x="106" y="65" text-anchor="middle" fill="#f4fbf8" font-family="Microsoft YaHei, sans-serif" font-size="16" font-weight="700">已同步</text>
+
+  <circle cx="199" cy="249" r="3.5" fill="#f7f8f9"/>
+  <circle cx="199" cy="265" r="3.5" fill="#526167"/>
+
+  <g aria-label="五小时额度">
+    <text x="106" y="126" text-anchor="middle" fill="#f7f8f9" font-family="Microsoft YaHei, sans-serif" font-size="20" font-weight="700">5小时额度</text>
+    <text x="150" y="218" text-anchor="end" fill="#59ddb8" font-family="Microsoft YaHei, sans-serif" font-size="96" font-weight="700">68</text>
+    <text x="156" y="218" fill="#59ddb8" font-family="Microsoft YaHei, sans-serif" font-size="34" font-weight="700">%</text>
+    <text x="106" y="257" text-anchor="middle" fill="#b7c1c4" font-family="Microsoft YaHei, sans-serif" font-size="20">18:20重置</text>
+  </g>
+
+  <rect x="20" y="280" width="172" height="1" fill="#354248"/>
+
+  <g aria-label="周额度">
+    <text x="20" y="315" fill="#f7f8f9" font-family="Microsoft YaHei, sans-serif" font-size="20" font-weight="700">周额度</text>
+    <text x="192" y="315" text-anchor="end" fill="#ffd05e" font-family="Microsoft YaHei, sans-serif" font-size="22" font-weight="700">34%</text>
+    <rect x="20" y="332" width="172" height="8" rx="4" fill="#354248"/>
+    <rect x="20" y="332" width="58" height="8" rx="4" fill="#ffd05e"/>
+    <text x="20" y="366" fill="#b7c1c4" font-family="Microsoft YaHei, sans-serif" font-size="15">8月5日重置</text>
+  </g>
+
+  <rect x="20" y="387" width="172" height="1" fill="#354248"/>
+
+  <g aria-label="可用重置">
+    <text x="20" y="422" fill="#f7f8f9" font-family="Microsoft YaHei, sans-serif" font-size="20" font-weight="700">可用重置</text>
+    <text x="192" y="422" text-anchor="end" fill="#59ddb8" font-family="Microsoft YaHei, sans-serif" font-size="22" font-weight="700">1 次</text>
+    <text x="20" y="452" fill="#b7c1c4" font-family="Microsoft YaHei, sans-serif" font-size="15">8月1日到期</text>
+  </g>
+</svg>

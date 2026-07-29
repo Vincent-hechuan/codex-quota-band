@@ -129,6 +129,14 @@ test("built page applies Snapshot v1 to the visible weekly quota and reset inven
           limitsCollectedAt: "2030-01-01T00:00:00.000Z",
           windows: [
             {
+              id: "codex:primary:300",
+              name: "five_hour",
+              windowMinutes: 300,
+              remainingPercent: 68,
+              resetsAt: "2030-01-01T05:00:00.000Z",
+              status: "current",
+            },
+            {
               id: "codex:weekly",
               name: "weekly",
               windowMinutes: 10080,
@@ -166,10 +174,12 @@ test("built page applies Snapshot v1 to the visible weekly quota and reset inven
       assert.equal(viewModel.resetCountText, "2");
       assert.equal(viewModel.resetExpiryText, "1月4日到期");
       assert.equal(viewModel.quotaRemainingText, "1%");
-      assert.equal(viewModel.quotaNumberText, "1");
-      assert.equal(viewModel.quotaUnitText, "%");
       assert.equal(viewModel.quotaResetText, "1月8日重置");
       assert.equal(viewModel.quotaTone, "danger");
+      assert.equal(viewModel.fiveHourNumberText, "68");
+      assert.equal(viewModel.fiveHourUnitText, "%");
+      assert.equal(viewModel.fiveHourTone, "healthy");
+      assert.equal(viewModel.weeklyProgressPercent, 1);
       assert.equal(storageWrites.length, 1);
       assert.equal(component.template(viewModel).tag, "div");
     },

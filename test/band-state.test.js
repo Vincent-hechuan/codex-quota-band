@@ -9,14 +9,13 @@ const {
   sanitizeSnapshotForBand,
 } = quotaState;
 
-test("the watch clock exposes a zero-padded local time and Chinese date", () => {
+test("the watch header exposes only a zero-padded local time", () => {
   assert.deepEqual(formatClock(new Date(2026, 6, 18, 10, 9)), {
     timeText: "10:09",
-    dateText: "7月18日 周六",
   });
 });
 
-test("the band view promotes the weekly quota into the hero section", () => {
+test("the band view keeps five-hour hero and weekly secondary quota independent", () => {
   const now = new Date("2030-01-01T02:00:00.000Z");
   const view = createBandView({
     protocolVersion: 1,
@@ -45,8 +44,10 @@ test("the band view promotes the weekly quota into the hero section", () => {
     link: { computer: "online", codex: "ok" },
   }, now);
 
-  assert.equal(view.quotaRemainingPercent, 67);
+  assert.equal(view.fiveHourRemainingText, "99%");
+  assert.equal(view.fiveHourTone, "healthy");
   assert.equal(view.quotaRemainingText, "67%");
+  assert.equal(view.weeklyProgressPercent, 67);
   assert.equal(view.quotaResetText, "1月8日重置");
   assert.equal(view.quotaTone, "healthy");
 });
@@ -73,7 +74,7 @@ test("an offline band keeps cached quota and makes sync status concise", () => {
   assert.equal(view.quotaTone, "offline");
   assert.equal(view.quotaRemainingText, "67%");
   assert.equal(view.statusText, "离线");
-  assert.match(view.statusTimeText, /^上次\d{2}:\d{2}$/);
+  assert.match(view.statusTimeText, /^\d{2}:\d{2}$/);
 });
 
 test("a partial snapshot uses the compact cached label that fits the sync pill", () => {
@@ -106,7 +107,7 @@ test("a partial snapshot uses the compact cached label that fits the sync pill",
   assert.equal(view.resetCountText, "3");
 });
 
-test("the band renders only current dynamic windows and locally expires cached quota data", () => {
+test("the band strictly rejects private fields and locally expires cached detail items", () => {
   const now = new Date("2026-07-18T02:00:00Z");
   const raw = {
     protocolVersion: 1,
@@ -155,28 +156,25 @@ test("the band renders only current dynamic windows and locally expires cached q
     token: "must be removed",
   };
 
+  assert.throws(() => sanitizeSnapshotForBand(raw, now), /unexpected summary fields/);
+  delete raw.token;
+  delete raw.windows[0].conversation;
   const sanitized = sanitizeSnapshotForBand(raw, now);
-  assert.equal(JSON.stringify(sanitized).includes("must be removed"), false);
-  assert.equal("token" in sanitized, false);
-  assert.equal(sanitized.resetInventory.status, "cached_derived");
+  assert.equal(sanitized.resetInventory.items.length, 1);
 
   const view = createBandView(sanitized, now);
-  assert.deepEqual(
-    view.windows.map(({ label, remainingText }) => ({ label, remainingText })),
-    [
-      { label: "周额度", remainingText: "61%" },
-      { label: "60 分钟额度", remainingText: "--" },
-    ],
-  );
+  assert.equal(view.quotaRemainingText, "61%");
+  assert.equal(view.weeklyProgressPercent, 61);
+  assert.equal(view.fiveHourRemainingText, "--");
+  assert.equal(view.fiveHourResetText, "暂无数据");
   assert.equal(view.statusText, "已同步");
   assert.equal(view.statusTone, "healthy");
   assert.match(view.statusTimeText, /^\d{2}:\d{2}$/);
-  assert.equal(view.windows.some(({ label }) => label.includes("5 小时")), false);
-  assert.equal(view.resetCountText, "1");
-  assert.equal(view.resetHintText, "最近到期 7月27日");
+  assert.equal(view.resetCountText, "2");
+  assert.equal(view.resetExpiryText, "7月27日到期");
 });
 
-test("the band labels dynamic windows and applies the 20 and 50 percent color boundaries", () => {
+test("the band applies independent quota color boundaries to the two visible windows", () => {
   const now = new Date("2026-07-18T02:00:00Z");
   const base = {
     protocolVersion: 1,
@@ -194,8 +192,6 @@ test("the band labels dynamic windows and applies the 20 and 50 percent color bo
   const windows = [
     ["five_hour", 300, 19],
     ["weekly", 10_080, 20],
-    ["custom", 1_440, 50],
-    ["custom", 90, 51],
   ].map(([name, windowMinutes, remainingPercent], index) => ({
     id: `window-${index}`,
     name,
@@ -206,20 +202,11 @@ test("the band labels dynamic windows and applies the 20 and 50 percent color bo
   }));
 
   const view = createBandView({ ...base, windows }, now);
-  assert.deepEqual(
-    view.windows.map(({ label, remainingText, tone }) => ({
-      label,
-      remainingText,
-      tone,
-    })),
-    [
-      { label: "5 小时额度", remainingText: "19%", tone: "danger" },
-      { label: "周额度", remainingText: "20%", tone: "warning" },
-      { label: "1440 分钟额度", remainingText: "50%", tone: "warning" },
-      { label: "90 分钟额度", remainingText: "51%", tone: "healthy" },
-    ],
-  );
-  assert.equal(view.resetHintText, "暂无重置数据");
+  assert.equal(view.fiveHourRemainingText, "19%");
+  assert.equal(view.fiveHourTone, "danger");
+  assert.equal(view.quotaRemainingText, "20%");
+  assert.equal(view.quotaTone, "warning");
+  assert.equal(view.resetExpiryText, "暂无重置数据");
 });
 
 test("transport failures have explicit band-facing messages", () => {

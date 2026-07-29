@@ -3,6 +3,7 @@ package com.codex.quota.android.runtime
 import com.codex.quota.android.protocol.ChatGptState
 import com.codex.quota.android.domain.TaskState
 import com.codex.quota.android.ui.DeviceLinkState
+import com.codex.quota.android.ui.FiveHourQuotaAvailability
 import com.codex.quota.android.ui.SyncState
 import java.time.Instant
 import org.junit.Assert.assertEquals
@@ -27,6 +28,56 @@ class RuntimeStateRepositoryTest {
     assertEquals(1, state.resetCredits.size)
     assertEquals(ChatGptState.Running, state.chatGptState)
     assertEquals("整理素材", state.tasks.single().title)
+  }
+
+  @Test
+  fun fiveHourAndWeeklyWindowsDriveIndependentUiQuotas() {
+    val repository = RuntimeStateRepository { nowMs }
+
+    repository.ingestQuota(
+      quotaPayload(
+        fiveHourWindow =
+          """
+          {
+            "id": "codex:primary:300",
+            "name": "five_hour",
+            "windowMinutes": 300,
+            "remainingPercent": 68,
+            "resetsAt": "2026-07-24T13:00:00Z",
+            "status": "current"
+          }
+          """.trimIndent(),
+      ),
+    )
+
+    assertEquals(68, repository.state.value.fiveHourQuota?.remainingPercent)
+    assertEquals(61, repository.state.value.weeklyQuota?.remainingPercent)
+  }
+
+  @Test
+  fun fiveHourWindowDistinguishesMissingFromPendingData() {
+    val missing = RuntimeStateRepository { nowMs }
+    missing.ingestQuota(quotaPayload())
+    assertEquals(FiveHourQuotaAvailability.Missing, missing.state.value.fiveHourQuotaAvailability)
+
+    val pending = RuntimeStateRepository { nowMs }
+    pending.ingestQuota(
+      quotaPayload(
+        fiveHourWindow =
+          """
+          {
+            "id": "codex:primary:300",
+            "name": "five_hour",
+            "windowMinutes": 300,
+            "remainingPercent": null,
+            "resetsAt": "2026-07-24T13:00:00Z",
+            "status": "pending_sync"
+          }
+          """.trimIndent(),
+      ),
+    )
+    assertEquals(FiveHourQuotaAvailability.Pending, pending.state.value.fiveHourQuotaAvailability)
+    assertNull(pending.state.value.fiveHourQuota)
   }
 
   @Test
@@ -236,6 +287,7 @@ class RuntimeStateRepositoryTest {
     sourceStatus: String = "ok",
     windowStatus: String = "current",
     resetInventory: String = trustedInventory,
+    fiveHourWindow: String? = null,
   ): String =
     """
     {
@@ -244,6 +296,7 @@ class RuntimeStateRepositoryTest {
       "sourceStatus": "$sourceStatus",
       "limitsCollectedAt": "$generatedAt",
       "windows": [
+        ${fiveHourWindow?.let { "$it," } ?: ""}
         {
           "id": "weekly",
           "name": "weekly",

@@ -23,6 +23,7 @@ class UiModelsTest {
     assertEquals("25分", taskElapsedLabel(now - 25 * 60_000, now))
     assertEquals("11小时", taskElapsedLabel(now - 11 * 60 * 60_000, now))
     assertEquals("3天", taskElapsedLabel(now - 3 * 24 * 60 * 60_000, now))
+    assertEquals("1周", taskElapsedLabel(now - 9 * 24 * 60 * 60_000, now))
   }
 
   @Test
@@ -62,7 +63,7 @@ class UiModelsTest {
 
   @Test
   fun `sync pill labels remain short even for very old data`() {
-    val now = 200L * 24 * 60 * 60_000
+    val now = 800L * 24 * 60 * 60_000
     val labels =
       listOf(
         syncStatusLabel(SyncState.Synced, 0, now, UpstreamFreshnessStatus.Current),
@@ -76,7 +77,7 @@ class UiModelsTest {
         syncStatusLabel(SyncState.Offline, 0, now, UpstreamFreshnessStatus.Current),
       )
 
-    assertEquals(listOf("已同步 99天+", "缓存 99天+", "待同步", "离线 99天+"), labels)
+    assertEquals(listOf("已同步 99周+", "缓存 99周+", "待同步", "离线 99周+"), labels)
     assert(labels.all { it.codePointCount(0, it.length) <= 8 })
   }
 
@@ -96,6 +97,25 @@ class UiModelsTest {
     assertEquals("8月1日到期", resetDateLabel(expiry, zone))
     assertEquals("8月1日重置", weeklyResetDateLabel(expiry, zone))
     assertEquals("剩余 3天", remainingTimeLabel(expiry, now))
+  }
+
+  @Test
+  fun `five hour reset label distinguishes available pending and missing data`() {
+    val resetAt = Instant.parse("2026-07-29T13:00:00Z").toEpochMilli()
+    val quota = WeeklyQuota(68, resetAt)
+
+    assertEquals(
+      "13:00重置",
+      fiveHourResetLabel(quota, FiveHourQuotaAvailability.Available, ZoneId.of("UTC")),
+    )
+    assertEquals(
+      "待同步",
+      fiveHourResetLabel(null, FiveHourQuotaAvailability.Pending, ZoneId.of("UTC")),
+    )
+    assertEquals(
+      "暂无数据",
+      fiveHourResetLabel(null, FiveHourQuotaAvailability.Missing, ZoneId.of("UTC")),
+    )
   }
 
   @Test

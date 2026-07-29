@@ -39,6 +39,85 @@ test("available reset color is independent from weekly quota color", () => {
   assert.equal(noReset.resetTone, "danger", "zero available resets is red");
 });
 
+test("five-hour and weekly quotas stay independent in the band view", () => {
+  const fiveHourReset = new Date(2030, 0, 1, 18, 20);
+  const view = quotaState.createBandView(
+    v2Snapshot({
+      windows: [
+        {
+          id: "codex:primary:300",
+          name: "five_hour",
+          windowMinutes: 300,
+          remainingPercent: 68,
+          resetsAt: fiveHourReset.toISOString(),
+          status: "current",
+        },
+        {
+          id: "codex:weekly",
+          name: "weekly",
+          windowMinutes: 10_080,
+          remainingPercent: 34,
+          resetsAt: "2030-01-08T00:00:00Z",
+          status: "current",
+        },
+      ],
+    }),
+    new Date("2030-01-01T00:00:00Z"),
+  );
+
+  assert.equal(view.fiveHourRemainingText, "68%");
+  assert.equal(view.fiveHourResetText, "18:20重置");
+  assert.equal(view.fiveHourTone, "healthy");
+  assert.equal(view.quotaRemainingText, "34%");
+  assert.equal(view.weeklyProgressPercent, 34);
+});
+
+test("five-hour quota distinguishes pending data from an absent window", () => {
+  const pending = quotaState.createBandView(
+    v2Snapshot({
+      windows: [{
+        id: "codex:primary:300",
+        name: "five_hour",
+        windowMinutes: 300,
+        remainingPercent: null,
+        resetsAt: "2030-01-01T05:00:00Z",
+        status: "pending_sync",
+      }],
+    }),
+    new Date("2030-01-01T00:00:00Z"),
+  );
+  const missing = quotaState.createBandView(v2Snapshot(), new Date("2030-01-01T00:00:00Z"));
+  const fiveHourOnly = quotaState.createBandView(
+    v2Snapshot({
+      windows: [{
+        id: "codex:primary:300",
+        name: "five_hour",
+        windowMinutes: 300,
+        remainingPercent: 68,
+        resetsAt: "2030-01-01T05:00:00Z",
+        status: "current",
+      }],
+    }),
+    new Date("2030-01-01T00:00:00Z"),
+  );
+
+  assert.equal(pending.fiveHourRemainingText, "--");
+  assert.equal(pending.fiveHourResetText, "待同步");
+  assert.equal(pending.quotaRemainingText, "--", "the five-hour window must not fill the weekly slot");
+  assert.equal(missing.fiveHourRemainingText, "--");
+  assert.equal(missing.fiveHourResetText, "暂无数据");
+  assert.equal(fiveHourOnly.quotaRemainingText, "--", "a current five-hour window still must not fill the weekly slot");
+});
+
+test("cache ages use the shared minute, hour, day, and week units", () => {
+  assert.equal(quotaState.formatElapsedAge(0), "刚刚");
+  assert.equal(quotaState.formatElapsedAge(59 * 60_000), "59分");
+  assert.equal(quotaState.formatElapsedAge(415 * 60_000), "6小时");
+  assert.equal(quotaState.formatElapsedAge(3 * 24 * 60 * 60_000), "3天");
+  assert.equal(quotaState.formatElapsedAge(9 * 24 * 60 * 60_000), "1周");
+  assert.equal(quotaState.formatElapsedAge(800 * 24 * 60 * 60_000), "99周+");
+});
+
 test("band rejects private fields, invalid timestamps, and oversized reset lists", () => {
   const privateField = v2Snapshot();
   privateField.resetInventory.items[0].title = "must never reach the band";

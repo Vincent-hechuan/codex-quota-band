@@ -4,7 +4,7 @@
 
 This file records user-visible changes in each public version. Release dates follow GitHub Releases.
 
-> `0.5.2` 目前是待完成升级验收的本地正式候选，尚未发布；未发布变更、三端当前状态和验证证据记录在
+> `0.6.0` 目前是已完成构建与真机验收的本地候选，尚未发布；未发布变更、三端当前状态和验证证据记录在
 > `docs/current-status.md`、`docs/build-verification.md` 与 `docs/device-acceptance.md`。
 > 在获得发布授权前不提前写入正式版本日志。
 

@@ -19,7 +19,7 @@ test("legacy Electron and AstroBox components remain on the same historical vers
   assert.ok(pluginManifest.permissions.includes("register_deeplink_action"));
 });
 
-test("current Windows, Android, and Band packages share the formal 0.5.2 version", async () => {
+test("current Windows, Android, and Band packages share the formal 0.6.0 version", async () => {
   const [windowsCargo, androidGradle, bandPackage, bandManifest] = await Promise.all([
     readFile(new URL("../windows-native/Cargo.toml", import.meta.url), "utf8"),
     readFile(new URL("../android-app/app/build.gradle.kts", import.meta.url), "utf8"),
@@ -27,16 +27,16 @@ test("current Windows, Android, and Band packages share the formal 0.5.2 version
     readJson("../band-app/src/manifest.json"),
   ]);
 
-  const releaseVersion = "0.5.2";
-  assert.match(windowsCargo, /^version\s*=\s*"0\.5\.2"$/m);
+  const releaseVersion = "0.6.0";
+  assert.match(windowsCargo, new RegExp(`^version\\s*=\\s*"${releaseVersion.replaceAll(".", "\\.")}"$`, "m"));
   assert.match(
     windowsCargo,
     /reqwest\s*=\s*\{[^\n]*"system-proxy"[^\n]*\}/,
     "the Windows quota client must inherit standard system and environment proxy settings",
   );
-  assert.match(androidGradle, /versionName\s*=\s*"0\.5\.2"/);
-  assert.match(androidGradle, /versionCode\s*=\s*502/);
+  assert.match(androidGradle, /versionName\s*=\s*"0\.6\.0"/);
+  assert.match(androidGradle, /versionCode\s*=\s*600/);
   assert.equal(bandPackage.version, releaseVersion);
   assert.equal(bandManifest.versionName, releaseVersion);
-  assert.equal(bandManifest.versionCode, 502);
+  assert.equal(bandManifest.versionCode, 600);
 });
