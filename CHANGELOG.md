@@ -4,13 +4,29 @@
 
 This file records user-visible changes in each public version. Release dates follow GitHub Releases.
 
-> `0.6.0` 目前是已完成构建与真机验收的本地候选，尚未发布；未发布变更、三端当前状态和验证证据记录在
-> `docs/current-status.md`、`docs/build-verification.md` 与 `docs/device-acceptance.md`。
-> 在获得发布授权前不提前写入正式版本日志。
-
 > `0.3.0` 之前，Windows、AstroBox 和手环 RPK 的版本号并非始终同步；以下早期条目会注明对应组件。
 >
 > Before `0.3.0`, Windows, AstroBox, and band RPK versions were not always synchronized. Early entries identify the affected component.
+
+## [0.6.1] - 2026-07-31
+
+### 修复 / Fixed
+
+- 修复手机端 Wearable 状态异步结果乱序时，手环实际已连接却显示“未连接”的问题。
+- 手环连接短暂滞后时，手机端进行有限重试；不新增常驻服务或后台轮询。
+- 保持 Windows、安卓手机和手环的产品版本为 `0.6.1`。
+
+## [0.6.0] - 2026-07-29
+
+### 新增 / Added
+
+- 在 Windows、安卓手机和小米手环 10 上显示 Codex 5 小时额度、周额度和重置时间。
+- 手机端加入检查更新入口；只有用户确认后才会打开 GitHub 下载页面。
+
+### 修复 / Fixed
+
+- 统一三端额度状态颜色和时间显示，并明确区分“已同步”“缓存”与“离线”。
+- 改进手机后台同步提示与手环页面可读性。
 
 ## [0.3.1] - 2026-07-21
 

@@ -83,13 +83,13 @@ test("built Band 10 page uses two vertically swipable pages with one accent dot 
   });
 });
 
-test("built release package advances to the unified 0.6.0 candidate", async () => {
+test("built release package keeps the unified 0.6.1 candidate version", async () => {
   const manifest = JSON.parse(await readFile(builtManifestUrl, "utf8"));
-  assert.equal(manifest.versionName, "0.6.0");
+  assert.equal(manifest.versionName, "0.6.1");
   assert.equal(
     manifest.versionCode,
-    600,
-    "the unified release package must upgrade over the installed 0.5.2 candidate",
+    601,
+    "the unified release package keeps the current local candidate version",
   );
 });
 

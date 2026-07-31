@@ -91,7 +91,7 @@ private enum class AppTab(val label: String, val icon: ImageVector) {
 fun CodexQuotaApp(
   state: AppUiState,
   modifier: Modifier = Modifier,
-  appVersion: String = "0.6.0",
+  appVersion: String = "0.6.1",
   availableUpdate: AppRelease? = null,
   notificationSettings: NotificationSettings = NotificationSettings.Default,
   onNotificationSettingsChange: (NotificationSettings) -> Unit = {},

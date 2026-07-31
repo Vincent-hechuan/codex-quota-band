@@ -1,6 +1,6 @@
 # Codex额度 Android
 
-0.6.0 的日常链路为：`Windows → Android Codex额度 → 小米运动健康 → 手环 RPK`。
+0.6.1 的日常链路为：`Windows → Android Codex额度 → 小米运动健康 → 手环 RPK`。
 AstroBox 只在首次安装或升级 RPK 时临时使用，不参与日常额度同步、任务同步或提醒。
 
 Android 端使用小米官方 `xms-wearable-lib_1.4_release.aar`。该 SDK 二进制受其提供方许可约束，
@@ -8,7 +8,7 @@ Android 端使用小米官方 `xms-wearable-lib_1.4_release.aar`。该 SDK 二�
 APK 与 RPK 必须使用相同的
 应用包名和配套签名，Wearable SDK 才会把设备权限与 `MessageApi` 数据通道交给该应用。
 
-这是 0.6.0 Android 本地候选应用目录。当前包含任务看板、通知决策、Task Sync v1
+这是 0.6.1 Android 本地候选应用目录。当前包含任务看板、通知决策、Task Sync v1
 严格解析核心、额度 Snapshot v1 严格解析与可信缓存归并，以及用户确认后的三页
 Compose 界面骨架。
 
@@ -45,7 +45,7 @@ Compose 界面骨架。
   检查失败不影响局域网同步。
 
 前一轮 Android ↔ Windows WSS 往返、正式托盘二维码窗口、局域网服务、Hook 和真实
-额度采集已经在本地候选组合中接通并通过自动化验证。`0.6.0` 正在完成三端重建和按改动范围复验，仍不能
+额度采集已经在本地候选组合中接通并通过自动化验证。`0.6.1` 正在完成三端重建和按改动范围复验，仍不能
 把本地 debug APK 当作正式发布包；最近结果见根目录 `docs/build-verification.md`。
 
 本地测试：
