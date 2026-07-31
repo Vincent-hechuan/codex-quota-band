@@ -8,13 +8,13 @@ View your **Codex five-hour quota, weekly quota, reset times, and available rese
   <img src="assets/icon.svg" alt="Codex Quota icon" width="96">
 </p>
 
-Current version: **0.6.0 (local release candidate)**
+Current version: **0.6.1**
 
-The Windows, Android, and band `0.6.0` candidates have passed automated checks and real-device acceptance. They have not yet been committed, pushed, or published as a GitHub Release.
+Version `0.6.1` is available on GitHub Releases. It fixes stale band-connection status after asynchronous Wearable checks.
 
 [View changelog](CHANGELOG.md)
 
-## 0.6.0 layout previews
+## 0.6.1 layout previews
 
 <table>
   <tr>
@@ -22,7 +22,7 @@ The Windows, Android, and band `0.6.0` candidates have passed automated checks a
     <th align="center">Band home (212×520)</th>
   </tr>
   <tr>
-    <td align="center"><img src="docs/band-ui-preview/five-hour-primary-android.png" alt="Android five-hour primary quota layout" width="240"></td>
+    <td align="center"><img src="docs/band-ui-preview/phone-home-real.jpg" alt="Android five-hour primary quota layout" width="240"></td>
     <td align="center"><img src="docs/band-ui-preview/five-hour-primary-band.png" alt="Band five-hour primary quota layout" width="180"></td>
   </tr>
 </table>
@@ -55,9 +55,9 @@ Download all three files from the same version on the [Releases](https://github.
 
 | Install on | File |
 | --- | --- |
-| Windows computer | `Codex-Quota-Setup-0.6.0.exe` |
-| Android phone | `CodexQuota-0.6.0.apk` |
-| Xiaomi Smart Band 10 (AstroBox only for sideloading) | `com.codex.quota.android.release.0.6.0.rpk` |
+| Windows computer | `Codex-Quota-Setup-0.6.1.exe` |
+| Android phone | `CodexQuota-0.6.1.apk` |
+| Xiaomi Smart Band 10 (AstroBox only for sideloading) | `com.codex.quota.android.release.0.6.1.rpk` |
 
 All three components should have the same version number.
 
@@ -65,15 +65,15 @@ All three components should have the same version number.
 
 ### 1. Install the Windows app
 
-1. Run `Codex-Quota-Setup-0.6.0.exe`.
+1. Run `Codex-Quota-Setup-0.6.1.exe`.
 2. After installation, the app stays in the Windows notification area. If it is hidden, click the `^` icon in the taskbar.
 3. The current test build is not commercially code-signed, so Windows may display an “Unknown publisher” warning. Download only from this repository and verify the SHA-256 value shown on the Release page.
 
 ### 2. Install the Android app and band RPK
 
 1. Open AstroBox and enter the page for the connected Xiaomi Smart Band 10.
-2. Import `com.codex.quota.android.release.0.6.0.rpk` and wait for the upgrade animation.
-3. Install `CodexQuota-0.6.0.apk` on the Android phone.
+2. Import `com.codex.quota.android.release.0.6.1.rpk` and wait for the upgrade animation.
+3. Install `CodexQuota-0.6.1.apk` on the Android phone.
 4. Exit AstroBox after the upgrade and keep Xiaomi Fitness connected to the band.
 
 ## First pairing
@@ -114,7 +114,7 @@ The weekly quota and available reset credits come from different local Codex dat
 3. Right-click the Codex Quota icon in the Windows notification area and select 「立即刷新」 (Refresh now).
 4. Wait about 5–10 seconds, then reopen the band app.
 
-`0.6.0` keeps the last unexpired reset-credit data while the new cache is unavailable and shows 「缓存」 (Cached). It returns to 「已同步」 (Synced) automatically after Codex recreates the cache.
+`0.6.1` keeps the last unexpired reset-credit data while the new cache is unavailable and shows 「缓存」 (Cached). It returns to 「已同步」 (Synced) automatically after Codex recreates the cache.
 
 ### Xiaomi Fitness competes for the connection
 
