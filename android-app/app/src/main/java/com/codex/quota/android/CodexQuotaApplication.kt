@@ -7,6 +7,7 @@ import com.codex.quota.android.notifications.TaskAlertCoordinator
 import com.codex.quota.android.notifications.TaskNotificationDispatcher
 import com.codex.quota.android.protocol.PairingDeepLinkContract
 import com.codex.quota.android.runtime.PairingClient
+import com.codex.quota.android.runtime.BandConnectionCheckResult
 import com.codex.quota.android.runtime.RuntimeStateRepository
 import com.codex.quota.android.runtime.SharedPreferencesTaskVisibilityStore
 import com.codex.quota.android.runtime.SyncWebSocketClient
@@ -48,12 +49,8 @@ class CodexQuotaApplication : Application() {
     startSavedConnection()
   }
 
-  fun checkBandConnection(onResult: (Boolean) -> Unit = {}) {
-    wearableBridge.refresh()
-    wearableBridge.requestPermission { granted ->
-      wearableBridge.refresh()
-      onResult(granted)
-    }
+  fun checkBandConnection(onResult: (BandConnectionCheckResult) -> Unit = {}) {
+    wearableBridge.checkConnection(onResult)
   }
 
   fun updateNotificationSettings(settings: NotificationSettings) {

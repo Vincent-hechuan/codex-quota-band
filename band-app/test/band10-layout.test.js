@@ -67,7 +67,7 @@ test("built Band 10 page uses two vertically swipable pages with one accent dot 
       hasTaskItems: true,
       taskItems: [
         { title: "允许写入文件", statusText: "需要授权", tone: "danger", showDivider: true, timeText: "1分" },
-        { title: "构建安装包", statusText: "处理中·执行命令", tone: "running", showDivider: true, timeText: "25分" },
+        { title: "构建安装包", statusText: "处理中", tone: "running", showDivider: true, timeText: "25分" },
         { title: "检查手环页面", statusText: "等待查看", tone: "waiting", showDivider: false, timeText: "11小时" },
       ],
     });
@@ -77,19 +77,19 @@ test("built Band 10 page uses two vertically swipable pages with one accent dot 
     assert.equal(tags[1], "swiper");
     assert.equal(tags.filter((tag) => tag === "swiper").length, 1);
     assert.equal(rulesForClass(styles, "task-dot")?.width, "7px");
-    assert.equal(rulesForClass(styles, "task-title")?.lines, 2);
+    assert.equal(rulesForClass(styles, "task-title")?.lines, 1, "mixed Chinese and Latin titles must not leak a clipped second line");
     assert.equal(rulesForClass(styles, "task-title")?.textOverflow, "ellipsis");
     assert.equal(rulesForClass(styles, "task-time")?.fontSize, "17px");
   });
 });
 
-test("built release package keeps the unified 0.6.1 candidate version", async () => {
+test("built release package keeps product version 0.6.2 with an installable hand-band revision", async () => {
   const manifest = JSON.parse(await readFile(builtManifestUrl, "utf8"));
-  assert.equal(manifest.versionName, "0.6.1");
+  assert.equal(manifest.versionName, "0.6.2");
   assert.equal(
     manifest.versionCode,
-    601,
-    "the unified release package keeps the current local candidate version",
+    604,
+    "the hand-band install sequence advances without changing the product version",
   );
 });
 
@@ -176,12 +176,14 @@ test("built Band 10 task rows reserve color for a single status dot", async () =
     assert.equal(rulesForClass(styles, "task-dot")?.width, "7px");
     assert.equal(rulesForClass(styles, "task-dot")?.top, "19px");
     assert.equal(rulesForClass(styles, "task-title")?.fontSize, "20px");
+    assert.equal(rulesForClass(styles, "task-title")?.height, "40px", "single-line titles keep the accepted row rhythm");
     assert.equal(rulesForClass(styles, "task-status")?.fontSize, "17px");
     assert.equal(rulesForClass(styles, "task-time")?.fontSize, "17px");
     assert.equal(rulesForClass(styles, "task-meta")?.width, "140px");
     assert.equal(rulesForClass(styles, "task-status")?.width, "100px");
     assert.equal(rulesForClass(styles, "task-time")?.width, "40px");
     assert.equal(rulesForClass(styles, "task-status")?.color, "#9da8ac");
+    assert.equal(rulesForClass(styles, "task-status-danger"), undefined, "task text stays neutral; only the dot carries state color");
     assert.equal(rulesForClass(styles, "task-dot-running")?.backgroundColor, "#59aaf2");
     assert.equal(rulesForClass(styles, "task-dot-waiting")?.backgroundColor, "#67ce91");
   });

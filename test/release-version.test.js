@@ -19,7 +19,7 @@ test("legacy Electron and AstroBox components remain on the same historical vers
   assert.ok(pluginManifest.permissions.includes("register_deeplink_action"));
 });
 
-test("current Windows, Android, and Band packages share the formal 0.6.1 version", async () => {
+test("current Windows, Android, and Band packages share the formal 0.6.2 version", async () => {
   const [windowsCargo, androidGradle, bandPackage, bandManifest] = await Promise.all([
     readFile(new URL("../windows-native/Cargo.toml", import.meta.url), "utf8"),
     readFile(new URL("../android-app/app/build.gradle.kts", import.meta.url), "utf8"),
@@ -27,20 +27,20 @@ test("current Windows, Android, and Band packages share the formal 0.6.1 version
     readJson("../band-app/src/manifest.json"),
   ]);
 
-  const releaseVersion = "0.6.1";
+  const releaseVersion = "0.6.2";
   assert.match(windowsCargo, new RegExp(`^version\\s*=\\s*"${releaseVersion.replaceAll(".", "\\.")}"$`, "m"));
   assert.match(
     windowsCargo,
     /reqwest\s*=\s*\{[^\n]*"system-proxy"[^\n]*\}/,
     "the Windows quota client must inherit standard system and environment proxy settings",
   );
-  assert.match(androidGradle, /versionName\s*=\s*"0\.6\.1"/);
+  assert.match(androidGradle, /versionName\s*=\s*"0\.6\.2"/);
   assert.match(
     androidGradle,
-    /versionCode\s*=\s*602/,
-    "the Android-only 0.6.1 hotfix keeps a monotonic internal install sequence",
+    /versionCode\s*=\s*604/,
+    "the 0.6.2 candidate keeps a monotonic Android install sequence",
   );
   assert.equal(bandPackage.version, releaseVersion);
   assert.equal(bandManifest.versionName, releaseVersion);
-  assert.equal(bandManifest.versionCode, 601);
+  assert.equal(bandManifest.versionCode, 604);
 });

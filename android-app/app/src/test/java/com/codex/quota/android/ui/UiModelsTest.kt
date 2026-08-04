@@ -1,13 +1,56 @@
 package com.codex.quota.android.ui
 
+import com.codex.quota.android.domain.SafeActivity
+import com.codex.quota.android.domain.SyncedTask
 import com.codex.quota.android.domain.TaskState
 import com.codex.quota.android.protocol.UpstreamFreshnessStatus
+import com.codex.quota.android.runtime.BandConnectionCheckResult
 import java.time.Instant
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class UiModelsTest {
+  @Test
+  fun `sync pill uses one semantic color per freshness state`() {
+    assertEquals(SemanticTone.Healthy, syncStatusTone(SyncState.Synced))
+    assertEquals(SemanticTone.Warning, syncStatusTone(SyncState.Cached))
+    assertEquals(SemanticTone.Primary, syncStatusTone(SyncState.AwaitingConfirmation))
+    assertEquals(SemanticTone.Danger, syncStatusTone(SyncState.Offline))
+  }
+
+  @Test
+  fun `cached quota keeps the color of its real percentage`() {
+    assertEquals(QuotaLevel.Healthy, quotaLevelForDisplay(WeeklyQuota(96, 1), SyncState.Cached))
+    assertEquals(QuotaLevel.Healthy, quotaLevelForDisplay(WeeklyQuota(50, 1), SyncState.Cached))
+    assertEquals(QuotaLevel.Warning, quotaLevelForDisplay(WeeklyQuota(49, 1), SyncState.Cached))
+    assertEquals(QuotaLevel.Critical, quotaLevelForDisplay(WeeklyQuota(19, 1), SyncState.Offline))
+    assertEquals(QuotaLevel.Unavailable, quotaLevelForDisplay(null, SyncState.Cached))
+  }
+
+  @Test
+  fun `reset count uses available empty and unknown semantic colors`() {
+    assertEquals(SemanticTone.Healthy, resetCountTone(2))
+    assertEquals(SemanticTone.Healthy, resetCountTone(1))
+    assertEquals(SemanticTone.Danger, resetCountTone(0))
+    assertEquals(SemanticTone.Neutral, resetCountTone(null))
+  }
+
+  @Test
+  fun `phone task summary includes status safe activity and elapsed time`() {
+    val now = 2_000_000L
+    val task =
+      SyncedTask(
+        conversationId = "task-1",
+        title = "构建安装包",
+        state = TaskState.Running,
+        activity = SafeActivity.ExecutingCommand,
+        updatedAtMs = now - 60_000,
+      )
+
+    assertEquals("处理中 · 执行命令 · 1分", phoneTaskMetadata(task, now))
+  }
+
   @Test
   fun `only authorization uses attention text in the current task contract`() {
     assertEquals(TaskStatusEmphasis.Default, taskStatusEmphasis(TaskState.Running))
@@ -34,9 +77,16 @@ class UiModelsTest {
   }
 
   @Test
-  fun `band connection check reports whether wearable authorization was granted`() {
-    assertEquals("手环已授权，正在同步", bandConnectionCheckResultLabel(true))
-    assertEquals("未取得手环授权，请保持小米运动健康已连接后重试", bandConnectionCheckResultLabel(false))
+  fun `band connection check reports the verified communication result instead of authorization`() {
+    assertEquals("手环已连接，已恢复同步", bandConnectionCheckResultLabel(BandConnectionCheckResult.Connected))
+    assertEquals(
+      "未检测到手环通信，请确认小米运动健康已连接后重试",
+      bandConnectionCheckResultLabel(BandConnectionCheckResult.NotConnected),
+    )
+    assertEquals(
+      "未取得手环授权，请确认小米运动健康已连接后重试",
+      bandConnectionCheckResultLabel(BandConnectionCheckResult.PermissionDenied),
+    )
   }
 
   @Test

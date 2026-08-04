@@ -50,6 +50,9 @@ Section "Install"
   ExecWait '"$SYSDIR\taskkill.exe" /IM CodexQuota.exe /T /F'
   Sleep 1500
   SetOutPath "$INSTDIR"
+  ; Remove the runtime DLL bundled by the local packaging hotfix candidate.
+  ; Formal release builds statically link this runtime.
+  Delete "$INSTDIR\libunwind.dll"
   File /oname=CodexQuota.exe "${APP_BINARY}"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
@@ -76,6 +79,7 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\${APP_NAME}\卸载 ${APP_NAME}.lnk"
   RMDir "$SMPROGRAMS\${APP_NAME}"
   Delete "$INSTDIR\CodexQuota.exe"
+  Delete "$INSTDIR\libunwind.dll"
   Delete "$INSTDIR\Uninstall.exe"
   DeleteRegKey HKCU "${UNINSTALL_KEY}"
   DeleteRegKey HKCU "Software\${APP_ID}"

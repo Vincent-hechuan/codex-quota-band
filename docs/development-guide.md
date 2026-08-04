@@ -1,6 +1,6 @@
 # CodexQuota 开发与交付指南
 
-本文是 `0.6.1` 的日常开发入口。产品取舍以根目录 `CONTEXT.md` 为准，Agent 工作规则以 `AGENTS.md` 为准，代码分层见 `docs/architecture.md`。
+本文是 `0.6.2` 的日常开发入口。产品取舍以根目录 `CONTEXT.md` 为准，Agent 工作规则以 `AGENTS.md` 为准，代码分层见 `docs/architecture.md`。
 
 本指南覆盖 Windows、Android 与手环 RPK 三端。开始新的主任务前，先阅读
 `docs/current-status.md`，其中列出临时版本差异和必须先由用户确认的跨端冲突。
@@ -98,10 +98,10 @@ npm run build:release
 
 ## 交付边界
 
-- 当前 `0.6.1` 已生成正式发布包；发布附件与 SHA-256 以 `docs/build-verification.md` 为准。
+- 当前 `0.6.2` 为本地候选；发布附件与 SHA-256 以 `docs/build-verification.md` 为准。
 - Windows、Android APK、手环 RPK 的产品版本必须一致；协议版本单独维护在 `contract/`。
 - 手环 UI 修改必须先给用户看 `212×520` 预览，确认后才改 RPK 源码。
-- 用户已确认 `0.6.1` 的手机到手环断线重连修复通过真机验证。发布流程展示版本、改动、测试、产物和 SHA-256。
+- `0.6.1` 的手机到手环断线重连修复已通过真机验证；`0.6.2` 新增改动仍需重新验收。发布流程展示版本、改动、测试、产物和 SHA-256。
 - Debug APK/RPK 仅用于开发和真机验证；正式产物应使用固定发布签名，私钥不得进入仓库。
 
 ## 文档职责

@@ -91,7 +91,7 @@ private enum class AppTab(val label: String, val icon: ImageVector) {
 fun CodexQuotaApp(
   state: AppUiState,
   modifier: Modifier = Modifier,
-  appVersion: String = "0.6.1",
+  appVersion: String = "0.6.2",
   availableUpdate: AppRelease? = null,
   notificationSettings: NotificationSettings = NotificationSettings.Default,
   onNotificationSettingsChange: (NotificationSettings) -> Unit = {},
@@ -165,6 +165,7 @@ fun CodexQuotaApp(
               hideTaskTitles = notificationSettings.hideTaskTitles,
               onShowTasks = { selectedTabIndex = AppTab.Tasks.ordinal },
               onRefreshSync = onRefreshSync,
+              onCheckBandConnection = onCheckBandConnection,
               nowMs = nowMs,
               modifier = contentModifier,
             )
@@ -183,7 +184,6 @@ fun CodexQuotaApp(
               onSettingsChange = onNotificationSettingsChange,
               onOpenNotificationSettings = onOpenNotificationSettings,
               onOpenPairingCamera = onOpenPairingCamera,
-              onCheckBandConnection = onCheckBandConnection,
               onExportDiagnostics = onExportDiagnostics,
               appVersion = appVersion,
               onCheckForUpdates = onCheckForUpdates,
@@ -234,6 +234,7 @@ private fun HomeScreen(
   hideTaskTitles: Boolean,
   onShowTasks: () -> Unit,
   onRefreshSync: () -> Boolean,
+  onCheckBandConnection: () -> Unit,
   nowMs: Long,
   modifier: Modifier,
 ) {
@@ -280,7 +281,7 @@ private fun HomeScreen(
       }
       if (state.syncState == SyncState.Offline) item { OfflineCallout() }
       item { QuotaHeroCard(state) }
-      item { ConnectionStatusRow(state) }
+      item { ConnectionStatusRow(state, onCheckBandConnection) }
       item { TaskSummarySection(tasks = phoneTasks.take(2), nowMs = nowMs, onShowTasks = onShowTasks, state = state, hideTaskTitles = hideTaskTitles) }
       item {
         ResetCreditsSection(
@@ -309,30 +310,30 @@ private fun HomeHeader(state: AppUiState, nowMs: Long) {
 
 @Composable
 private fun AuthorizationAlert(count: Int, task: SyncedTask, nowMs: Long, hideTaskTitles: Boolean, onShowTasks: () -> Unit) {
-  val accent = taskStateColor(TaskState.NeedsAuthorization)
   CodexGlassCard(
     modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
     shape = RoundedCornerShape(CodexTokens.Radius.Card),
-    color = accent.copy(alpha = if (androidx.compose.foundation.isSystemInDarkTheme()) .12f else .14f),
-    borderColor = accent.copy(alpha = .36f),
     shadowElevation = 2.dp,
   ) {
     Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp)) {
       Text("$count 个任务需要你在电脑端处理", fontSize = CodexTokens.Type.SectionTitle, fontWeight = FontWeight.SemiBold)
-      Text(
-        "${displayTaskTitle(task, hideTaskTitles)} · ${taskMetadata(task, nowMs)}",
-        modifier = Modifier.padding(top = 4.dp),
-        fontSize = CodexTokens.Type.Supporting,
-        color = taskStateColor(TaskState.NeedsAuthorization),
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-      )
+      Row(modifier = Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(modifier = Modifier.size(7.dp).background(taskBoardDotColor(task.state), CircleShape))
+        Text(
+          "${displayTaskTitle(task, hideTaskTitles)} · ${phoneTaskMetadata(task, nowMs)}",
+          modifier = Modifier.padding(start = 8.dp),
+          fontSize = CodexTokens.Type.Supporting,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          maxLines = 2,
+          overflow = TextOverflow.Ellipsis,
+        )
+      }
       Text(
         "查看任务详情",
         modifier = Modifier.padding(top = 7.dp).clickable(onClick = onShowTasks),
         fontSize = CodexTokens.Type.Supporting,
         fontWeight = FontWeight.Bold,
-        color = taskStateColor(TaskState.NeedsAuthorization),
+        color = MaterialTheme.colorScheme.primary,
       )
     }
   }
@@ -361,7 +362,6 @@ private fun OfflineCallout() {
 
 @Composable
 private fun QuotaHeroCard(state: AppUiState) {
-  val muted = state.syncState != SyncState.Synced
   CodexGlassCard(
     modifier = Modifier.fillMaxWidth(),
     shape = RoundedCornerShape(CodexTokens.Radius.Hero),
@@ -372,7 +372,7 @@ private fun QuotaHeroCard(state: AppUiState) {
         QuotaRing(
           quota = state.fiveHourQuota,
           size = 176.dp,
-          muted = muted,
+          syncState = state.syncState,
         )
       }
       Text(
@@ -391,12 +391,12 @@ private fun QuotaHeroCard(state: AppUiState) {
           state.weeklyQuota?.let { "${it.remainingPercent}%" } ?: "--",
           fontSize = CodexTokens.Type.SectionTitle,
           fontWeight = FontWeight.Bold,
-          color = if (muted) cachedColor() else quotaColor(state.weeklyQuota?.level ?: QuotaLevel.Unavailable),
+          color = quotaColor(quotaLevelForDisplay(state.weeklyQuota, state.syncState)),
         )
       }
       QuotaProgressBar(
         quota = state.weeklyQuota,
-        muted = muted,
+        syncState = state.syncState,
         modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
       )
       Text(
@@ -412,11 +412,11 @@ private fun QuotaHeroCard(state: AppUiState) {
 @Composable
 private fun QuotaProgressBar(
   quota: WeeklyQuota?,
-  muted: Boolean,
+  syncState: SyncState,
   modifier: Modifier = Modifier,
 ) {
   val progress = (quota?.remainingPercent ?: 0).coerceIn(0, 100) / 100f
-  val progressColor = if (muted) cachedColor() else quotaColor(quota?.level ?: QuotaLevel.Unavailable)
+  val progressColor = quotaColor(quotaLevelForDisplay(quota, syncState))
   val trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .14f)
   Canvas(modifier = modifier.height(8.dp)) {
     val radius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
@@ -432,7 +432,7 @@ private fun QuotaProgressBar(
 }
 
 @Composable
-private fun ConnectionStatusRow(state: AppUiState) {
+private fun ConnectionStatusRow(state: AppUiState, onCheckBandConnection: () -> Unit) {
   CodexGlassCard(
     modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp).height(76.dp),
     shape = RoundedCornerShape(CodexTokens.Radius.Navigation),
@@ -464,7 +464,7 @@ private fun ConnectionStatusRow(state: AppUiState) {
           DeviceLinkState.Unavailable -> "不可用"
         },
         color = deviceStateColor(state.connections.band),
-        modifier = Modifier.weight(1f),
+        modifier = Modifier.weight(1f).clickable(onClick = onCheckBandConnection),
       )
     }
   }
@@ -522,8 +522,24 @@ private fun TaskSummarySection(state: AppUiState, tasks: List<SyncedTask>, nowMs
 @Composable
 private fun CompactTaskRow(task: SyncedTask, nowMs: Long, hideTaskTitles: Boolean) {
   Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-    Text(displayTaskTitle(task, hideTaskTitles), fontSize = CodexTokens.Type.Body, maxLines = 2, overflow = TextOverflow.Ellipsis)
-    Text(taskMetadata(task, nowMs), modifier = Modifier.padding(top = 3.dp), fontSize = CodexTokens.Type.Supporting, color = taskStateColor(task.state), maxLines = 1, overflow = TextOverflow.Ellipsis)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+      Box(modifier = Modifier.size(7.dp).background(taskBoardDotColor(task.state), CircleShape))
+      Text(
+        displayTaskTitle(task, hideTaskTitles),
+        modifier = Modifier.padding(start = 8.dp),
+        fontSize = CodexTokens.Type.Body,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+      )
+    }
+    Text(
+      phoneTaskMetadata(task, nowMs),
+      modifier = Modifier.padding(start = 15.dp, top = 3.dp),
+      fontSize = CodexTokens.Type.Supporting,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
+    )
   }
 }
 
@@ -560,7 +576,7 @@ private fun ResetCreditsSection(
         modifier = Modifier.padding(start = 12.dp),
         fontSize = 18.sp,
         fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary,
+        color = semanticToneColor(resetCountTone(availableCount)),
       )
     }
   }
@@ -686,31 +702,14 @@ private fun TaskBoardRow(task: SyncedTask, nowMs: Long, hideTaskTitles: Boolean,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
     }
-    Row(
+    Text(
+      phoneTaskMetadata(task, nowMs),
       modifier = Modifier.fillMaxWidth().padding(start = 15.dp, top = 4.dp),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      Row(
-        modifier = Modifier.weight(1f),
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        Text(
-          taskStateLabel(task.state),
-          fontSize = CodexTokens.Type.Caption,
-          fontWeight = if (taskStatusEmphasis(task.state) == TaskStatusEmphasis.Attention) FontWeight.SemiBold else FontWeight.Normal,
-          color = if (taskStatusEmphasis(task.state) == TaskStatusEmphasis.Attention) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-        )
-      }
-      Text(
-        taskElapsedLabel(task.updatedAtMs, nowMs),
-        modifier = Modifier.padding(start = 8.dp),
-        fontSize = CodexTokens.Type.Caption,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        maxLines = 1,
-      )
-    }
+      fontSize = CodexTokens.Type.Caption,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
+    )
   }
 }
 
@@ -721,7 +720,6 @@ private fun SettingsScreen(
   onSettingsChange: (NotificationSettings) -> Unit,
   onOpenNotificationSettings: () -> Unit,
   onOpenPairingCamera: () -> Unit,
-  onCheckBandConnection: () -> Unit,
   onExportDiagnostics: () -> Unit,
   appVersion: String,
   onCheckForUpdates: () -> Unit,
@@ -737,8 +735,6 @@ private fun SettingsScreen(
     item {
       SettingsGroup("连接与设备") {
         SettingsActionRow("扫码连接电脑", "扫描 Windows 托盘中的配对二维码", "›", onOpenPairingCamera)
-        SettingsDivider()
-        SettingsActionRow("检查手环连接", "重新请求手环数据权限，不接管小米运动健康连接", "›", onCheckBandConnection)
       }
     }
     item {
@@ -917,13 +913,13 @@ private fun ReminderTimingControl(selected: ReminderTiming, onSelected: (Reminde
 }
 
 @Composable
-private fun QuotaRing(quota: WeeklyQuota?, size: Dp, muted: Boolean = false) {
+private fun QuotaRing(quota: WeeklyQuota?, size: Dp, syncState: SyncState) {
   val progress by animateFloatAsState(
     targetValue = (quota?.remainingPercent ?: 0) / 100f,
     animationSpec = tween(CodexTokens.Type.MotionMs),
     label = "quota-progress",
   )
-  val ringColor = if (muted) cachedColor() else quotaColor(quota?.level ?: QuotaLevel.Unavailable)
+  val ringColor = quotaColor(quotaLevelForDisplay(quota, syncState))
   val trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .14f)
   Box(modifier = Modifier.size(size), contentAlignment = Alignment.Center) {
     Canvas(modifier = Modifier.fillMaxSize()) {
@@ -1120,10 +1116,19 @@ private fun quotaColor(level: QuotaLevel): Color = when (level) {
 }
 
 @Composable
-private fun syncStateColor(state: SyncState): Color = when (state) {
-  SyncState.Synced -> MaterialTheme.colorScheme.primary
-  SyncState.Cached, SyncState.AwaitingConfirmation, SyncState.Offline -> cachedColor()
-}
+private fun syncStateColor(state: SyncState): Color = semanticToneColor(syncStatusTone(state))
+
+@Composable
+private fun semanticToneColor(tone: SemanticTone): Color =
+  when (tone) {
+    SemanticTone.Healthy ->
+      if (androidx.compose.foundation.isSystemInDarkTheme()) CodexTokens.Color.WaitingDark else CodexTokens.Color.Waiting
+    SemanticTone.Warning ->
+      if (androidx.compose.foundation.isSystemInDarkTheme()) CodexTokens.Color.AuthorizationDark else CodexTokens.Color.Authorization
+    SemanticTone.Danger -> MaterialTheme.colorScheme.error
+    SemanticTone.Primary -> MaterialTheme.colorScheme.primary
+    SemanticTone.Neutral -> cachedColor()
+  }
 
 @Composable
 private fun deviceStateColor(state: DeviceLinkState): Color =
@@ -1151,24 +1156,6 @@ private fun emptyTaskLabel(state: AppUiState): String = when {
 }
 
 private fun displayTaskTitle(task: SyncedTask, hidden: Boolean): String = TaskTitleFormatter.display(task.title, hidden)
-
-private fun taskMetadata(task: SyncedTask, nowMs: Long): String {
-  val status = taskStateLabel(task.state)
-  val activity = when (task.activity) {
-    SafeActivity.ExecutingCommand -> "执行命令"
-    SafeActivity.ModifyingFiles -> "修改文件"
-    SafeActivity.UsingBrowser -> "使用浏览器"
-    null -> null
-  }
-  return listOfNotNull(status, activity, taskElapsedLabel(task.updatedAtMs, nowMs)).joinToString(" · ")
-}
-
-private fun taskStateLabel(state: TaskState): String =
-  when (state) {
-    TaskState.Running -> "处理中"
-    TaskState.NeedsAuthorization -> "需要授权"
-    TaskState.WaitingForReview -> "等待查看"
-  }
 
 @Composable
 private fun CodexQuotaTheme(content: @Composable () -> Unit) {

@@ -13,7 +13,7 @@ test("band task view uses the confirmed compact relative-time labels", () => {
   assert.equal(taskState.relativeTimeText(now.getTime() - 3 * 86_400_000, now), "3天");
 });
 
-test("band task view maps safe task states and activities without identifiers", () => {
+test("band task view shows only task state and time without tool activity", () => {
   const now = new Date("2030-01-04T12:00:00.000Z");
   const view = taskState.createTaskView(
     {
@@ -46,7 +46,7 @@ test("band task view maps safe task states and activities without identifiers", 
     view.items.map(({ statusText, tone, timeText }) => ({ statusText, tone, timeText })),
     [
       { statusText: "需要授权", tone: "danger", timeText: "1分" },
-      { statusText: "处理中·执行命令", tone: "running", timeText: "25分" },
+      { statusText: "处理中", tone: "running", timeText: "25分" },
       { statusText: "等待查看", tone: "waiting", timeText: "11小时" },
     ],
   );

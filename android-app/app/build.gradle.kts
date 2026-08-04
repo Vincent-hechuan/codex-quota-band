@@ -29,10 +29,10 @@ android {
     applicationId = "com.codex.quota.android"
     minSdk = 26
     targetSdk = 36
-    // Keep the install sequence monotonic so this 0.6.1 local hotfix can replace the
-    // replace a local candidate without uninstalling user pairing data.
-    versionCode = 602
-    versionName = "0.6.1"
+    // Keep the install sequence monotonic so 0.6.2 can replace local candidates
+    // without uninstalling user pairing data.
+    versionCode = 604
+    versionName = "0.6.2"
     buildConfigField("boolean", "DEMO_FIVE_HOUR_QUOTA", demoFiveHourQuota.toString())
   }
 

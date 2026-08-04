@@ -1,9 +1,11 @@
 package com.codex.quota.android.ui
 
 import com.codex.quota.android.domain.SyncedTask
+import com.codex.quota.android.domain.SafeActivity
 import com.codex.quota.android.domain.TaskState
 import com.codex.quota.android.protocol.ChatGptState
 import com.codex.quota.android.protocol.UpstreamFreshnessStatus
+import com.codex.quota.android.runtime.BandConnectionCheckResult
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -14,6 +16,14 @@ enum class SyncState {
   Cached,
   AwaitingConfirmation,
   Offline,
+}
+
+enum class SemanticTone {
+  Healthy,
+  Warning,
+  Danger,
+  Primary,
+  Neutral,
 }
 
 enum class DeviceLinkState {
@@ -152,7 +162,43 @@ fun syncStatusLabel(
   }
 }
 
+/** Sync freshness is shown by the pill; it must not recolor a known quota value. */
+fun quotaLevelForDisplay(quota: WeeklyQuota?, syncState: SyncState): QuotaLevel =
+  if (quota == null) QuotaLevel.Unavailable else quota.level
+
+fun syncStatusTone(state: SyncState): SemanticTone =
+  when (state) {
+    SyncState.Synced -> SemanticTone.Healthy
+    SyncState.Cached -> SemanticTone.Warning
+    SyncState.AwaitingConfirmation -> SemanticTone.Primary
+    SyncState.Offline -> SemanticTone.Danger
+  }
+
 fun taskElapsedLabel(updatedAtMs: Long, nowMs: Long): String = compactElapsedLabel(updatedAtMs, nowMs)
+
+fun phoneTaskMetadata(task: SyncedTask, nowMs: Long): String {
+  val status =
+    when (task.state) {
+      TaskState.Running -> "处理中"
+      TaskState.NeedsAuthorization -> "需要授权"
+      TaskState.WaitingForReview -> "等待查看"
+    }
+  val activity =
+    when (task.activity) {
+      SafeActivity.ExecutingCommand -> "执行命令"
+      SafeActivity.ModifyingFiles -> "修改文件"
+      SafeActivity.UsingBrowser -> "使用浏览器"
+      null -> null
+    }
+  return listOfNotNull(status, activity, taskElapsedLabel(task.updatedAtMs, nowMs)).joinToString(" · ")
+}
+
+fun resetCountTone(availableCount: Int?): SemanticTone =
+  when {
+    availableCount == null -> SemanticTone.Neutral
+    availableCount == 0 -> SemanticTone.Danger
+    else -> SemanticTone.Healthy
+  }
 
 fun taskStatusEmphasis(state: TaskState): TaskStatusEmphasis =
   when (state) {
@@ -160,8 +206,12 @@ fun taskStatusEmphasis(state: TaskState): TaskStatusEmphasis =
     TaskState.Running, TaskState.WaitingForReview -> TaskStatusEmphasis.Default
   }
 
-fun bandConnectionCheckResultLabel(granted: Boolean): String =
-  if (granted) "手环已授权，正在同步" else "未取得手环授权，请保持小米运动健康已连接后重试"
+fun bandConnectionCheckResultLabel(result: BandConnectionCheckResult): String =
+  when (result) {
+    BandConnectionCheckResult.Connected -> "手环已连接，已恢复同步"
+    BandConnectionCheckResult.NotConnected -> "未检测到手环通信，请确认小米运动健康已连接后重试"
+    BandConnectionCheckResult.PermissionDenied -> "未取得手环授权，请确认小米运动健康已连接后重试"
+  }
 
 /** Returns the delay until the next whole-minute age label update. */
 fun millisecondsUntilNextMinute(nowMs: Long): Long = 60_000L - Math.floorMod(nowMs, 60_000L)

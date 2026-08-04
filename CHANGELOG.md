@@ -8,6 +8,31 @@ This file records user-visible changes in each public version. Release dates fol
 >
 > Before `0.3.0`, Windows, AstroBox, and band RPK versions were not always synchronized. Early entries identify the affected component.
 
+## [0.6.2] - 2026-08-04
+
+### 新增 / Added
+
+- Windows 托盘右键菜单直接显示 5 小时额度和周额度。
+
+### 改进 / Changed
+
+- 统一三端颜色语义：已同步为绿色、缓存为黄色、离线为红色、处理中为蓝色；缓存状态不再覆盖额度本身的红黄绿阈值颜色。
+- 额度 50% 起统一使用绿色；可用重置统一为 0 次红色、1 次及以上绿色、未知灰色。
+- 手机首页和任务页使用彩色圆点表达任务状态，标题、阶段和时间保持主题自适应的中性文字；任务页补齐安全阶段摘要。
+- 手环任务页只显示任务状态和相对时间，不显示具体工具阶段；缓存与离线时间统一使用分、小时、天、周。
+
+### 修复 / Fixed
+
+- 修复手环实际可以同步任务，但手机首页仍错误显示“未连接”的状态刷新问题。
+- 修复手环中英文混排任务标题在两行省略时泄漏单个裁切字符的问题，标题改为稳定的单行省略。
+- Windows 正式安装包使用静态运行库构建，并在仅保留 Windows 系统目录的 PATH 下执行启动检查，避免普通用户因缺少 `libunwind.dll` 等开发环境运行库而无法启动。
+
+### 验证 / Validation
+
+- 三端产品版本统一为 `0.6.2`；Android 与手环内部安装序号均为 `604`。
+- 三端正式产物已完成自动验证；Windows 安装包已通过最小系统 PATH 独立启动和非系统 DLL 依赖检查。
+- 正式产物校验值已写入构建文档，三端真机验收已经通过。
+
 ## [0.6.1] - 2026-07-31
 
 ### 修复 / Fixed

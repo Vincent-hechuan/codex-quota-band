@@ -39,6 +39,17 @@ test("available reset color is independent from weekly quota color", () => {
   assert.equal(noReset.resetTone, "danger", "zero available resets is red");
 });
 
+test("band quota becomes healthy at exactly fifty percent", () => {
+  const view = quotaState.createBandView(
+    v2Snapshot({
+      windows: [{ id: "weekly", name: "weekly", windowMinutes: 10080, remainingPercent: 50, resetsAt: "2030-01-08T00:00:00Z", status: "current" }],
+    }),
+    new Date("2030-01-01T00:00:00Z"),
+  );
+
+  assert.equal(view.quotaTone, "healthy");
+});
+
 test("five-hour and weekly quotas stay independent in the band view", () => {
   const fiveHourReset = new Date(2030, 0, 1, 18, 20);
   const view = quotaState.createBandView(

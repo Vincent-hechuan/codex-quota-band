@@ -526,6 +526,11 @@ unsafe fn show_tray_menu(window: HWND) {
         .get()
         .map(|app| app.upstream_freshness())
         .unwrap_or_default();
+    let quota = APP
+        .get()
+        .and_then(|app| app.quota_state.read().ok().map(|quota| quota.clone()))
+        .unwrap_or_else(|| unavailable_payload().quota);
+    let quota_labels = tray_quota_labels(&quota);
     let confirmation_in_progress = APP
         .get()
         .is_some_and(|app| app.upstream_confirmation_in_progress());
@@ -548,6 +553,9 @@ unsafe fn show_tray_menu(window: HWND) {
         0,
         &format!("额度 {upstream_label}"),
     );
+    for label in quota_labels {
+        append_menu(menu, MF_STRING | MF_DISABLED, 0, &label);
+    }
     AppendMenuW(menu, MF_SEPARATOR, 0, null());
     append_menu(
         menu,
@@ -1505,6 +1513,35 @@ fn upstream_usage_label(
         UpstreamFreshnessStatus::Current => ("已同步", UI_WAITING),
         UpstreamFreshnessStatus::Cached => ("缓存", UI_CACHED),
         UpstreamFreshnessStatus::Unavailable => ("待同步", UI_CACHED),
+    }
+}
+
+fn tray_quota_labels(quota: &QuotaSnapshot) -> [String; 2] {
+    [
+        tray_quota_label(quota, "five_hour", 300, "5小时额度"),
+        tray_quota_label(quota, "weekly", 10_080, "周额度"),
+    ]
+}
+
+fn tray_quota_label(
+    quota: &QuotaSnapshot,
+    window_name: &str,
+    window_minutes: u32,
+    label: &str,
+) -> String {
+    let remaining = quota
+        .windows
+        .iter()
+        .find(|window| window.name == window_name && window.window_minutes == window_minutes)
+        .filter(|window| {
+            window.status == codex_quota_windows_core::QuotaWindowStatus::Current
+                && chrono::DateTime::parse_from_rfc3339(&window.resets_at)
+                    .is_ok_and(|resets_at| resets_at.with_timezone(&Utc) > Utc::now())
+        })
+        .and_then(|window| window.remaining_percent);
+    match remaining {
+        Some(percent) => format!("{label} {percent}%"),
+        None => format!("{label} --"),
     }
 }
 
@@ -2647,6 +2684,47 @@ mod ui_contract_tests {
         assert_ne!(MENU_PAIR, MENU_DIAGNOSTICS);
         assert_ne!(MENU_REPAIR_HOOK, MENU_DIAGNOSTICS);
         assert_ne!(MENU_REFRESH_STATUS, MENU_DIAGNOSTICS);
+    }
+
+    #[test]
+    fn tray_menu_shows_five_hour_and_weekly_quota() {
+        let mut quota = unavailable_payload().quota;
+        assert_eq!(tray_quota_labels(&quota), ["5小时额度 --", "周额度 --"]);
+        quota.windows = vec![
+            codex_quota_windows_core::QuotaWindow {
+                id: "five-hour".to_string(),
+                name: "five_hour".to_string(),
+                window_minutes: 300,
+                remaining_percent: Some(68),
+                resets_at: "2099-08-04T20:00:00Z".to_string(),
+                status: codex_quota_windows_core::QuotaWindowStatus::Current,
+            },
+            codex_quota_windows_core::QuotaWindow {
+                id: "weekly".to_string(),
+                name: "weekly".to_string(),
+                window_minutes: 10_080,
+                remaining_percent: Some(81),
+                resets_at: "2099-08-09T00:00:00Z".to_string(),
+                status: codex_quota_windows_core::QuotaWindowStatus::Current,
+            },
+        ];
+
+        assert_eq!(tray_quota_labels(&quota), ["5小时额度 68%", "周额度 81%"]);
+    }
+
+    #[test]
+    fn tray_menu_does_not_present_expired_quota_as_current() {
+        let mut quota = unavailable_payload().quota;
+        quota.windows = vec![codex_quota_windows_core::QuotaWindow {
+            id: "expired-five-hour".to_string(),
+            name: "five_hour".to_string(),
+            window_minutes: 300,
+            remaining_percent: Some(68),
+            resets_at: "2020-01-01T00:00:00Z".to_string(),
+            status: codex_quota_windows_core::QuotaWindowStatus::Current,
+        }];
+
+        assert_eq!(tray_quota_labels(&quota)[0], "5小时额度 --");
     }
 
     #[test]

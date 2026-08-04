@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <strong>最新正式版本：0.6.1</strong>
+  <strong>当前版本：0.6.2</strong>
 </p>
 
 ## 它能做什么
@@ -45,13 +45,13 @@
 
 ## 下载
 
-请从 [GitHub Releases](https://github.com/Vincent-hechuan/codex-quota-band/releases) 下载同一版本的三个文件。以下为当前正式版 `0.6.1`：
+请从 [GitHub Releases](https://github.com/Vincent-hechuan/codex-quota-band/releases) 下载同一版本的三个文件。以下为 `0.6.2`：
 
 | 安装位置 | 文件 |
 | --- | --- |
-| Windows 电脑 | `Codex-Quota-Setup-0.6.1.exe` |
-| 安卓手机 | `CodexQuota-0.6.1.apk` |
-| 小米手环 10 | `com.codex.quota.android.release.0.6.1.rpk` |
+| Windows 电脑 | `Codex-Quota-Setup-0.6.2.exe` |
+| 安卓手机 | `CodexQuota-0.6.2.apk` |
+| 小米手环 10 | `com.codex.quota.android.release.0.6.2.rpk` |
 
 三个文件的版本号必须一致。不要从不明网站下载安装包。
 
@@ -59,7 +59,7 @@
 
 ### 第一步：安装 Windows 程序
 
-1. 双击 `Codex-Quota-Setup-0.6.1.exe`。
+1. 双击 `Codex-Quota-Setup-0.6.2.exe`。
 2. 安装完成后，Codex额度会出现在任务栏右下角的通知区域；如果没有看到，请点击 `^`。
 3. 安装完成页会默认启动程序并显示配对二维码。
 4. 重启 ChatGPT，在「ChatGPT → 设置 → 钩子 → 信任全部钩子」中确认以下四项已开启：
@@ -67,7 +67,7 @@
 
 ### 第二步：安装安卓应用
 
-1. 在手机上安装 `CodexQuota-0.6.1.apk`。
+1. 在手机上安装 `CodexQuota-0.6.2.apk`。
 2. 打开「小米运动健康」，确认手环仍然在线。
 3. 打开手机上的「Codex额度」。
 4. 建议在手机系统中为 Codex额度开启：
@@ -94,7 +94,7 @@ AstroBox 只在安装或升级手环应用时临时使用，不参与日常同�
 1. 临时打开 [AstroBox](https://astrobox.online/downloads/)。
 2. 进入已连接的小米手环 10 设备页面。
 3. 打开「快应用数量」右上角的设置。
-4. 点击 `+`，导入 `com.codex.quota.android.release.0.6.1.rpk`。
+4. 点击 `+`，导入 `com.codex.quota.android.release.0.6.2.rpk`。
 5. 等待安装动画结束。
 6. 安装完成后退出 AstroBox，重新确认「小米运动健康」仍显示手环已连接。
 7. 在手机「Codex额度 → 设置」中点击「检查手环连接」，按系统提示授权。

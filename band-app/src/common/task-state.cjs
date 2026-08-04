@@ -57,13 +57,8 @@ function taskStatusView(task) {
   if (task.state === 'waiting_for_review') {
     return { statusText: '等待查看', groupText: '等待查看', tone: 'waiting', order: 2 }
   }
-  const activity = {
-    executing_command: '执行命令',
-    modifying_files: '修改文件',
-    using_browser: '使用浏览器'
-  }[task.activity]
   return {
-    statusText: activity ? `处理中·${activity}` : '处理中',
+    statusText: '处理中',
     groupText: '处理中',
     tone: 'running',
     order: 1

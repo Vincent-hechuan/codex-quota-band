@@ -134,7 +134,7 @@ function windowLabel(window) {
   if (window.name === "five_hour" && window.windowMinutes === 300) return "5小时额度";
   return window.name === "weekly" || window.windowMinutes === 10_080 ? "周额度" : `${window.windowMinutes} 分钟额度`;
 }
-function quotaTone(value) { return !Number.isInteger(value) ? "unknown" : value < 20 ? "danger" : value <= 50 ? "warning" : "healthy"; }
+function quotaTone(value) { return !Number.isInteger(value) ? "unknown" : value < 20 ? "danger" : value < 50 ? "warning" : "healthy"; }
 function resetTone(value) { return !Number.isInteger(value) ? "unknown" : value === 0 ? "danger" : "healthy"; }
 function formatElapsedAge(elapsedMilliseconds) {
   const elapsedMinutes = Math.floor(Math.max(0, Number(elapsedMilliseconds) || 0) / 60_000);

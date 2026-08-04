@@ -25,12 +25,34 @@ if (-not $Version) {
 }
 
 Push-Location $projectRoot
+$previousRustFlags = $env:RUSTFLAGS
 try {
+    $env:RUSTFLAGS = "-C target-feature=+crt-static"
     & $cargo build --release --bin codex_quota_windows
     if ($LASTEXITCODE -ne 0) { throw "cargo build failed with exit code $LASTEXITCODE" }
 
     $binary = Join-Path $targetRoot "release\codex_quota_windows.exe"
     if (-not (Test-Path -LiteralPath $binary)) { throw "Missing release binary: $binary" }
+
+    $bundleRoot = [IO.Path]::GetFullPath((Join-Path $targetRoot "installer-bundle"))
+    $resolvedTargetRoot = [IO.Path]::GetFullPath($targetRoot).TrimEnd([IO.Path]::DirectorySeparatorChar)
+    if (-not $bundleRoot.StartsWith(
+        $resolvedTargetRoot + [IO.Path]::DirectorySeparatorChar,
+        [StringComparison]::OrdinalIgnoreCase
+    )) {
+        throw "Unsafe installer bundle target: $bundleRoot"
+    }
+    if (Test-Path -LiteralPath $bundleRoot) {
+        Remove-Item -LiteralPath $bundleRoot -Recurse -Force
+    }
+    New-Item -ItemType Directory -Path $bundleRoot | Out-Null
+    $bundledBinary = Join-Path $bundleRoot "CodexQuota.exe"
+    Copy-Item -LiteralPath $binary -Destination $bundledBinary
+
+    & (Join-Path $PSScriptRoot "test-portable-bundle.ps1") -BundleDirectory $bundleRoot
+    if ($LASTEXITCODE -ne 0) {
+        throw "Portable bundle smoke test failed with exit code $LASTEXITCODE"
+    }
 
     $dist = Join-Path $projectRoot "dist"
     New-Item -ItemType Directory -Force -Path $dist | Out-Null
@@ -40,12 +62,13 @@ try {
         throw "Installer version must use major.minor.patch or a SemVer prerelease suffix: $Version"
     }
     $versionInfo = "$($versionMatch.Groups[1].Value).$($versionMatch.Groups[2].Value).$($versionMatch.Groups[3].Value).0"
-    & $makensis "/DAPP_VERSION=$Version" "/DAPP_VERSION_INFO=$versionInfo" "/DAPP_BINARY=$binary" "/DOUTPUT_PATH=$output" "installer\CodexQuota.nsi"
+    & $makensis "/DAPP_VERSION=$Version" "/DAPP_VERSION_INFO=$versionInfo" "/DAPP_BINARY=$bundledBinary" "/DOUTPUT_PATH=$output" "installer\CodexQuota.nsi"
     if ($LASTEXITCODE -ne 0) { throw "makensis failed with exit code $LASTEXITCODE" }
     if (-not (Test-Path -LiteralPath $output)) { throw "Missing installer: $output" }
 
     Get-Item -LiteralPath $output | Select-Object FullName,Length,LastWriteTime
 }
 finally {
+    $env:RUSTFLAGS = $previousRustFlags
     Pop-Location
 }

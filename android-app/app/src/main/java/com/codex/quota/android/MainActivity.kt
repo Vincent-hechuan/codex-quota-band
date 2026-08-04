@@ -105,9 +105,10 @@ class MainActivity : ComponentActivity() {
         onOpenNotificationSettings = ::openNotificationSettings,
         onOpenPairingCamera = ::openPairingCamera,
         onCheckBandConnection = {
-          quotaApplication.checkBandConnection { granted ->
+          Toast.makeText(this, "正在检查手环连接", Toast.LENGTH_SHORT).show()
+          quotaApplication.checkBandConnection { result ->
             runOnUiThread {
-              Toast.makeText(this, bandConnectionCheckResultLabel(granted), Toast.LENGTH_LONG).show()
+              Toast.makeText(this, bandConnectionCheckResultLabel(result), Toast.LENGTH_LONG).show()
             }
           }
         },

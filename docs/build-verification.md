@@ -2,6 +2,21 @@
 
 本文件只保留正式发布包的验证结论和校验值。逐次开发、调试和设备环境记录不随公开仓库保留。
 
+## 0.6.2 正式发布包
+
+三端产品版本统一为 `0.6.2`；安卓手机和手环 `versionCode` 均为 `604`。以下文件已完成自动验证与三端真机验收。
+
+| 组件 | 自动验证 | 当前本地产物 | SHA-256 |
+| --- | --- | --- | --- |
+| Windows | Rust workspace 74/74，`cargo fmt --check`，Release 构建，最小系统 PATH 独立启动检查，PE 导入表检查 | `Codex-Quota-Setup-0.6.2.exe`（2,944,298 bytes） | `F58C2D547C9D3CC80DCC9F1D92F6F43FE61EAAE503D626FA9DAB3FAF5D53D3C9` |
+| 安卓手机 | 单元测试 107/107，Lint，Debug/Release 构建 | `app-release.apk`（1,781,326 bytes） | `8D3894449C29843B7B52BAD1CA108A53ED91BA171165E68FC3C093A722599BA2` |
+| 小米手环 10 | RPK Release 构建，28/28 | `com.codex.quota.android.release.0.6.2.rpk`（50,070 bytes） | `B234D9B0DB93F52B60E06F51D9A6E1874E72584F3F8153BFD3C64B8CDEBF3F5F` |
+| 根目录契约 | Node 测试 42/42 | — | — |
+
+Windows 成品的导入表只包含 Windows 10/11 自带的系统 DLL/API Set，不包含 `libunwind.dll`、`libgcc.dll`、`libwinpthread.dll`、`VCRUNTIME*.dll` 或 `MSVCP*.dll`。安装目录仅有主程序和卸载程序；覆盖安装后主程序与本次构建文件的 SHA-256 一致，并已成功启动。
+
+安卓 APK 已覆盖安装到真机，系统报告 `versionName=0.6.2`、`versionCode=604`。手环 RPK 已完成安装，Windows、安卓手机和小米手环 10 的本轮真机验收均已通过。
+
 ## 0.6.0 正式发布包
 
 三端产品版本统一为 `0.6.0`；安卓手机和手环 `versionCode` 均为 `600`。

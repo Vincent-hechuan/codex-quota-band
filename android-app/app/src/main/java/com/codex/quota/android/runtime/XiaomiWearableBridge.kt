@@ -33,6 +33,26 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import java.util.concurrent.atomic.AtomicBoolean
+
+enum class BandConnectionCheckResult {
+  Connected,
+  NotConnected,
+  PermissionDenied,
+}
+
+private class PendingBandConnectionCheck(
+  private val callback: (BandConnectionCheckResult) -> Unit,
+) {
+  private val completed = AtomicBoolean(false)
+  private val timeoutArmed = AtomicBoolean(false)
+
+  fun complete(result: BandConnectionCheckResult) {
+    if (completed.compareAndSet(false, true)) callback(result)
+  }
+
+  fun armTimeout(): Boolean = timeoutArmed.compareAndSet(false, true)
+}
 
 /**
  * Direct Android -> Xiaomi Vela bridge. AstroBox is deliberately not involved here.
@@ -56,43 +76,38 @@ class XiaomiWearableBridge(
     refresh()
   }
 
-  fun requestPermission(onResult: (Boolean) -> Unit = {}) {
-    val node = activeNode
-    if (node == null) {
-      nodeApi
-        .connectedNodes
-        .addOnSuccessListener { nodes ->
-          val discoveredNode = nodes.firstOrNull()
-          updateActiveNode(discoveredNode)
-          if (discoveredNode == null) {
-            onResult(false)
-            repository.setBandConnected(false)
-            return@addOnSuccessListener
-          }
-          requestPermissionForNode(discoveredNode, onResult)
-        }
-        .addOnFailureListener {
-          onResult(false)
-          repository.setBandConnected(false)
-        }
-      return
-    }
-    requestPermissionForNode(node, onResult)
+  fun checkConnection(onResult: (BandConnectionCheckResult) -> Unit) {
+    refresh(
+      requestPermissionIfNeeded = true,
+      restartRegistration = true,
+      check = PendingBandConnectionCheck(onResult),
+    )
   }
 
-  private fun requestPermissionForNode(node: Node, onResult: (Boolean) -> Unit) {
+  private fun requestPermissionForNode(
+    node: Node,
+    refreshGeneration: Long,
+    onResult: (Boolean) -> Unit,
+  ) {
     authApi
       .requestPermission(node.id, Permission.DEVICE_MANAGER, Permission.NOTIFY)
       .addOnSuccessListener {
-        onResult(true)
-        refresh()
+        if (refreshState.isCurrent(refreshGeneration) && activeNode?.id == node.id) onResult(true)
       }
       .addOnFailureListener {
-        onResult(false)
+        if (refreshState.isCurrent(refreshGeneration) && activeNode?.id == node.id) onResult(false)
       }
   }
 
   fun refresh() {
+    refresh(requestPermissionIfNeeded = false, restartRegistration = false, check = null)
+  }
+
+  private fun refresh(
+    requestPermissionIfNeeded: Boolean,
+    restartRegistration: Boolean,
+    check: PendingBandConnectionCheck?,
+  ) {
     val refreshGeneration = refreshState.begin()
     nodeApi
       .connectedNodes
@@ -101,13 +116,13 @@ class XiaomiWearableBridge(
         val node = nodes.firstOrNull()
         updateActiveNode(node)
         if (node == null) {
-          repository.setBandConnected(false)
+          publishDisconnected(check)
           return@addOnSuccessListener
         }
         nodeApi.isWearAppInstalled(node.id).addOnSuccessListener { installed ->
           if (!refreshState.isCurrent(refreshGeneration)) return@addOnSuccessListener
           if (!installed) {
-            repository.setBandConnected(false)
+            publishDisconnected(check)
             return@addOnSuccessListener
           }
           authApi
@@ -115,24 +130,59 @@ class XiaomiWearableBridge(
             .addOnSuccessListener { granted ->
               if (!refreshState.isCurrent(refreshGeneration)) return@addOnSuccessListener
               if (granted.size < REQUIRED_PERMISSIONS.size || granted.any { !it }) {
-                repository.setBandConnected(false)
+                if (requestPermissionIfNeeded) {
+                  requestPermissionForNode(node, refreshGeneration) { permissionGranted ->
+                    if (permissionGranted) {
+                      startConnectionProbe(node, refreshGeneration, restartRegistration, check)
+                    } else {
+                      repository.setBandConnected(false)
+                      check?.complete(BandConnectionCheckResult.PermissionDenied)
+                    }
+                  }
+                } else {
+                  publishDisconnected(check)
+                }
                 return@addOnSuccessListener
               }
-              probeConnection(node, refreshGeneration, attempt = 0)
+              startConnectionProbe(node, refreshGeneration, restartRegistration, check)
             }
             .addOnFailureListener {
-              if (refreshState.isCurrent(refreshGeneration)) repository.setBandConnected(false)
+              if (refreshState.isCurrent(refreshGeneration)) publishDisconnected(check)
             }
         }.addOnFailureListener {
-          if (refreshState.isCurrent(refreshGeneration)) repository.setBandConnected(false)
+          if (refreshState.isCurrent(refreshGeneration)) publishDisconnected(check)
         }
       }
       .addOnFailureListener {
         if (refreshState.isCurrent(refreshGeneration)) {
           activeNode = null
-          repository.setBandConnected(false)
+          publishDisconnected(check)
         }
       }
+  }
+
+  private fun startConnectionProbe(
+    node: Node,
+    refreshGeneration: Long,
+    restartRegistration: Boolean,
+    check: PendingBandConnectionCheck?,
+  ) {
+    if (check?.armTimeout() == true) {
+      mainHandler.postDelayed(
+        {
+          if (refreshState.isCurrent(refreshGeneration) && activeNode?.id == node.id) {
+            if (registrationState.isReady(node.id)) {
+              check.complete(BandConnectionCheckResult.Connected)
+            } else {
+              repository.setBandConnected(false)
+              check.complete(BandConnectionCheckResult.NotConnected)
+            }
+          }
+        },
+        CONNECTION_CHECK_TIMEOUT_MS,
+      )
+    }
+    probeConnection(node, refreshGeneration, attempt = 0, restartRegistration, check)
   }
 
   fun stop() {
@@ -155,34 +205,63 @@ class XiaomiWearableBridge(
     return requested
   }
 
-  private fun registerListeners(node: Node) {
-    val plan = registrationState.planFor(node.id)
+  private fun registerListeners(
+    node: Node,
+    refreshGeneration: Long,
+    attempt: Int,
+    restartRegistration: Boolean,
+    check: PendingBandConnectionCheck?,
+  ) {
+    if (restartRegistration) unregisterListeners(node)
+    val plan = registrationState.planFor(node.id, restart = restartRegistration)
     if (plan.registerMessages) {
       messageApi
         .addListener(node.id, messageListener)
         .addOnSuccessListener {
-          registrationState.markMessageRegistered(node.id)
-          publishRegistrationState(node.id)
+          if (!isCurrentRegistration(node.id, refreshGeneration, plan.registrationGeneration)) return@addOnSuccessListener
+          registrationState.markMessageRegistered(node.id, plan.registrationGeneration)
+          publishRegistrationState(node.id, refreshGeneration, plan.registrationGeneration, check)
         }
         .addOnFailureListener {
-          registrationState.markDisconnected(node.id)
-          repository.setBandConnected(false)
+          handleRegistrationFailure(node, refreshGeneration, plan.registrationGeneration, attempt, check)
         }
     }
     if (plan.subscribeConnection) {
       nodeApi
         .subscribe(node.id, DataItem.ITEM_CONNECTION, connectionListener)
         .addOnSuccessListener {
-          registrationState.markConnectionSubscribed(node.id)
-          publishRegistrationState(node.id)
+          if (!isCurrentRegistration(node.id, refreshGeneration, plan.registrationGeneration)) return@addOnSuccessListener
+          registrationState.markConnectionSubscribed(node.id, plan.registrationGeneration)
+          publishRegistrationState(node.id, refreshGeneration, plan.registrationGeneration, check)
         }
         .addOnFailureListener {
-          registrationState.markDisconnected(node.id)
-          repository.setBandConnected(false)
+          handleRegistrationFailure(node, refreshGeneration, plan.registrationGeneration, attempt, check)
         }
     }
-    publishRegistrationState(node.id)
+    publishRegistrationState(node.id, refreshGeneration, plan.registrationGeneration, check)
   }
+
+  private fun handleRegistrationFailure(
+    node: Node,
+    refreshGeneration: Long,
+    registrationGeneration: Long,
+    attempt: Int,
+    check: PendingBandConnectionCheck?,
+  ) {
+    if (!isCurrentRegistration(node.id, refreshGeneration, registrationGeneration)) return
+    registrationState.markDisconnected(node.id, registrationGeneration)
+    repository.setBandConnected(false)
+    scheduleConnectionProbe(node, refreshGeneration, attempt, restartRegistration = false, check)
+  }
+
+  private fun isCurrentRegistration(
+    nodeId: String,
+    refreshGeneration: Long,
+    registrationGeneration: Long,
+  ): Boolean =
+    refreshState.isCurrent(refreshGeneration) &&
+      activeNode?.id == nodeId &&
+      registrationState.isCurrent(nodeId, registrationGeneration)
 
   private fun updateActiveNode(node: Node?) {
     val previous = activeNode
@@ -192,32 +271,56 @@ class XiaomiWearableBridge(
     activeNode = node
   }
 
-  private fun probeConnection(node: Node, refreshGeneration: Long, attempt: Int) {
+  private fun probeConnection(
+    node: Node,
+    refreshGeneration: Long,
+    attempt: Int,
+    restartRegistration: Boolean,
+    check: PendingBandConnectionCheck?,
+  ) {
     if (!refreshState.isCurrent(refreshGeneration) || activeNode?.id != node.id) return
     nodeApi
       .query(node.id, DataItem.ITEM_CONNECTION)
       .addOnSuccessListener { state ->
         if (!refreshState.isCurrent(refreshGeneration) || activeNode?.id != node.id) return@addOnSuccessListener
         if (state.isConnected) {
-          registerListeners(node)
+          registerListeners(node, refreshGeneration, attempt, restartRegistration, check)
+        } else if (registrationState.hasConfirmedCommunication(node.id)) {
+          repository.setBandConnected(true)
+          check?.complete(BandConnectionCheckResult.Connected)
         } else {
           repository.setBandConnected(false)
-          scheduleConnectionProbe(node, refreshGeneration, attempt)
+          scheduleConnectionProbe(node, refreshGeneration, attempt, restartRegistration, check)
         }
       }
       .addOnFailureListener {
         if (!refreshState.isCurrent(refreshGeneration) || activeNode?.id != node.id) return@addOnFailureListener
-        repository.setBandConnected(false)
-        scheduleConnectionProbe(node, refreshGeneration, attempt)
+        if (registrationState.hasConfirmedCommunication(node.id)) {
+          repository.setBandConnected(true)
+          check?.complete(BandConnectionCheckResult.Connected)
+        } else {
+          repository.setBandConnected(false)
+          scheduleConnectionProbe(node, refreshGeneration, attempt, restartRegistration, check)
+        }
       }
   }
 
-  private fun scheduleConnectionProbe(node: Node, refreshGeneration: Long, attempt: Int) {
-    val delayMs = refreshState.connectionRetryDelayMs(attempt) ?: return
+  private fun scheduleConnectionProbe(
+    node: Node,
+    refreshGeneration: Long,
+    attempt: Int,
+    restartRegistration: Boolean,
+    check: PendingBandConnectionCheck?,
+  ) {
+    val delayMs = refreshState.connectionRetryDelayMs(attempt)
+    if (delayMs == null) {
+      check?.complete(BandConnectionCheckResult.NotConnected)
+      return
+    }
     mainHandler.postDelayed(
       {
         if (refreshState.isCurrent(refreshGeneration) && activeNode?.id == node.id) {
-          probeConnection(node, refreshGeneration, attempt + 1)
+          probeConnection(node, refreshGeneration, attempt + 1, restartRegistration, check)
         }
       },
       delayMs,
@@ -229,18 +332,32 @@ class XiaomiWearableBridge(
     nodeApi.unsubscribe(node.id, DataItem.ITEM_CONNECTION)
   }
 
-  private fun publishRegistrationState(nodeId: String) {
-    if (activeNode?.id != nodeId) return
-    repository.setBandConnected(registrationState.isReady(nodeId))
+  private fun publishRegistrationState(
+    nodeId: String,
+    refreshGeneration: Long,
+    registrationGeneration: Long,
+    check: PendingBandConnectionCheck?,
+  ) {
+    if (!isCurrentRegistration(nodeId, refreshGeneration, registrationGeneration)) return
+    val connected = registrationState.isReady(nodeId)
+    repository.setBandConnected(connected)
+    if (connected) check?.complete(BandConnectionCheckResult.Connected)
   }
 
-  private fun handleIncoming(bytes: ByteArray) {
+  private fun publishDisconnected(check: PendingBandConnectionCheck?) {
+    repository.setBandConnected(false)
+    check?.complete(BandConnectionCheckResult.NotConnected)
+  }
+
+  private fun handleIncoming(nodeId: String, bytes: ByteArray) {
+    val node = activeNode?.takeIf { it.id == nodeId } ?: return
     val root = runCatching { Json.parseToJsonElement(bytes.toString(Charsets.UTF_8)).jsonObject }.getOrNull()
       ?: return
     if (root["type"]?.jsonPrimitive?.content != "quota_request") return
     val nonce = root["nonce"]?.jsonPrimitive?.content ?: return
     if (nonce.isBlank() || nonce.length > 64) return
-    val node = activeNode ?: return
+    registrationState.markCommunicationConfirmed(nodeId)
+    repository.setBandConnected(true)
     val snapshot =
       repository.latestQuotaSnapshot()?.let {
         if (BuildConfig.DEMO_FIVE_HOUR_QUOTA) it.withDemoFiveHourQuota() else it
@@ -265,12 +382,12 @@ class XiaomiWearableBridge(
     messageApi.sendMessage(node.id, payload.toString().toByteArray(Charsets.UTF_8))
   }
 
-  private val messageListener = OnMessageReceivedListener { _, bytes -> handleIncoming(bytes) }
+  private val messageListener = OnMessageReceivedListener { nodeId, bytes -> handleIncoming(nodeId, bytes) }
 
   private val connectionListener = OnDataChangedListener { nodeId, _, result ->
     if (activeNode?.id != nodeId) return@OnDataChangedListener
     if (result.connectedStatus == 1) {
-      activeNode?.let(::registerListeners)
+      refresh()
     } else {
       refreshState.invalidate()
       registrationState.markDisconnected(nodeId)
@@ -280,6 +397,7 @@ class XiaomiWearableBridge(
 
   private companion object {
     val REQUIRED_PERMISSIONS = arrayOf(Permission.DEVICE_MANAGER, Permission.NOTIFY)
+    const val CONNECTION_CHECK_TIMEOUT_MS = 10_000L
   }
 }
 

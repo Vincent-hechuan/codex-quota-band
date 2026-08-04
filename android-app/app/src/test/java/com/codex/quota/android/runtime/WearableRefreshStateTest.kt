@@ -37,4 +37,5 @@ class WearableRefreshStateTest {
 
     assertFalse(state.isCurrent(refresh))
   }
+
 }

@@ -29,12 +29,19 @@ if ($install.ExitCode -ne 0) { throw "Installer failed with exit code $($install
 
 try {
     $executable = Join-Path $testRoot "CodexQuota.exe"
+    $runtimeDll = Join-Path $testRoot "libunwind.dll"
     $uninstaller = Join-Path $testRoot "Uninstall.exe"
-    if (-not (Test-Path -LiteralPath $executable) -or -not (Test-Path -LiteralPath $uninstaller)) {
+    if (
+        -not (Test-Path -LiteralPath $executable) -or
+        -not (Test-Path -LiteralPath $uninstaller)
+    ) {
         throw "Installed executable or uninstaller is missing"
     }
-    $smoke = Start-Process -FilePath $executable -ArgumentList '--smoke-test' -PassThru -Wait -WindowStyle Hidden
-    if ($smoke.ExitCode -ne 0) { throw "Installed executable smoke test failed with exit code $($smoke.ExitCode)" }
+    if (Test-Path -LiteralPath $runtimeDll) {
+        throw "Installed bundle unexpectedly depends on libunwind.dll"
+    }
+    & (Join-Path $PSScriptRoot "test-portable-bundle.ps1") -BundleDirectory $testRoot
+    if ($LASTEXITCODE -ne 0) { throw "Installed executable smoke test failed with exit code $LASTEXITCODE" }
 }
 finally {
     $uninstaller = Join-Path $testRoot "Uninstall.exe"

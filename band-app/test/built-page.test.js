@@ -92,7 +92,7 @@ test("built page applies the privacy-minimized task snapshot beside quota", asyn
       assert.equal(viewModel.hasTaskItems, true);
       assert.equal(viewModel.taskItems[0].statusText, "需要授权");
       assert.equal(viewModel.taskItems[0].groupText, "需要授权");
-      assert.equal(viewModel.taskItems[1].statusText, "处理中·执行命令");
+      assert.equal(viewModel.taskItems[1].statusText, "处理中");
       assert.equal(viewModel.taskItems[1].groupText, "处理中");
       assert.equal(storageWrites.length, 1);
       assert.equal(component.template(viewModel).tag, "div");
@@ -218,8 +218,6 @@ test("built page uses relative minutes for a locally restored cached snapshot", 
     const component = pageExports.default;
     const viewModel = createViewModel(component);
     viewModel.lastSnapshotAtMs = Date.now() - 121_000;
-    viewModel.lastSyncClockText = "06:02";
-
     component.showCachedStatus.call(viewModel, "显示缓存", "warning");
 
     assert.equal(viewModel.statusText, "缓存");
@@ -249,13 +247,13 @@ test("wearable channel authorization errors direct users to reauthorize in Codex
   );
 });
 
-test("built page shows a fixed-height cached status when Windows is unreachable", async () => {
+test("built page shows relative offline age instead of a last-sync clock when Windows is unreachable", async () => {
   await withBuiltPage((pageExports) => {
     pageExports.entry(pageExports);
     const component = pageExports.default;
     const viewModel = createViewModel(component);
     viewModel.requestNonce = "band-test-error";
-    viewModel.lastSyncClockText = "06:02";
+    viewModel.lastSnapshotAtMs = Date.now() - 15 * 60 * 60_000;
     viewModel.hasSnapshot = true;
     viewModel.quotaTone = "healthy";
 
@@ -267,7 +265,7 @@ test("built page shows a fixed-height cached status when Windows is unreachable"
 
     assert.equal(viewModel.statusText, "离线");
     assert.equal(viewModel.statusTone, "danger");
-    assert.equal(viewModel.statusTimeText, "06:02");
+    assert.equal(viewModel.statusTimeText, "15小时");
     assert.equal(viewModel.quotaTone, "healthy");
     assert.equal(component.template(viewModel).tag, "div");
   });
