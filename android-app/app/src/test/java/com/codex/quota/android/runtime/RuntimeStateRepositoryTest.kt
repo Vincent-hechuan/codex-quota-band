@@ -212,7 +212,7 @@ class RuntimeStateRepositoryTest {
   }
 
   @Test
-  fun currentQuotaBecomesCachedWhenItsUpstreamConfirmationIsOlderThanOneMinute() {
+  fun currentQuotaToleratesTwoRefreshIntervalsBeforeBecomingCached() {
     var clockMs = nowMs
     val repository = RuntimeStateRepository { clockMs }
 
@@ -226,7 +226,12 @@ class RuntimeStateRepositoryTest {
     )
     assertEquals(SyncState.Synced, repository.state.value.syncState)
 
-    clockMs += 60_001
+    clockMs += 119_999
+    repository.reassessQuotaFreshness()
+
+    assertEquals(SyncState.Synced, repository.state.value.syncState)
+
+    clockMs += 2
     repository.reassessQuotaFreshness()
 
     assertEquals(SyncState.Cached, repository.state.value.syncState)

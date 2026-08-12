@@ -53,6 +53,7 @@ const MENU_REPAIR_HOOK: u32 = 1005;
 const MENU_REFRESH_STATUS: u32 = 1006;
 const MENU_DIAGNOSTICS: u32 = 1007;
 const DIAGNOSTICS_REFRESH_TIMER: usize = 1;
+const UPSTREAM_CONFIRMATION_INTERVAL: std::time::Duration = std::time::Duration::from_secs(45);
 const MAX_RAW_HOOK_EVENT_BYTES: u64 = 256 * 1024;
 const TRAY_ICON_ICO: &[u8] = include_bytes!("../../assets/tray-icon.ico");
 
@@ -2737,8 +2738,10 @@ fn start_quota_monitor(
         let mut current_tasks = initial_tasks(now_ms());
         let mut task_runtime = HookTaskRuntime::new();
         let mut quota_interval = tokio::time::interval(std::time::Duration::from_secs(5));
-        let mut direct_reset_interval =
-            tokio::time::interval(std::time::Duration::from_secs(15 * 60));
+        // Windows owns the upstream confirmation cadence. Android refresh requests are an
+        // additional trigger, not the only thing keeping an otherwise healthy connection fresh.
+        let mut upstream_confirmation_interval =
+            tokio::time::interval(UPSTREAM_CONFIRMATION_INTERVAL);
         let mut hook_interval = tokio::time::interval(std::time::Duration::from_millis(200));
         loop {
             tokio::select! {
@@ -2746,6 +2749,7 @@ fn start_quota_monitor(
                     if changed.is_err() {
                         return;
                     }
+                    upstream_confirmation_interval.reset();
                     if collector.is_none() {
                         collector = QuotaCollector::discover().ok();
                     }
@@ -2779,20 +2783,31 @@ fn start_quota_monitor(
                         }
                     }
                 }
-                _ = direct_reset_interval.tick() => {
+                _ = upstream_confirmation_interval.tick() => {
                     if collector.is_none() {
                         collector = QuotaCollector::discover().ok();
                     }
                     if let Some(current) = collector.clone() {
-                        // This is intentionally independent from the 5-second cache
-                        // monitor: direct credential use is bounded to startup and a
-                        // low-frequency refresh, never repeated on each UI update.
-                        if let Ok(freshness) = tokio::task::spawn_blocking(move || {
-                            current.refresh_upstream_freshness(Utc::now())
+                        // Direct credential use remains low-frequency and independent from the
+                        // 5-second local cache monitor. Each successful confirmation is collected
+                        // and published immediately so phone and band share one freshness clock.
+                        if let Ok((freshness, refreshed_quota)) = tokio::task::spawn_blocking(move || {
+                            let now = Utc::now();
+                            let freshness = current.refresh_upstream_freshness(now);
+                            let quota = current.collect(now).ok();
+                            (freshness, quota)
                         })
                         .await
                         {
-                            current_quota.upstream_freshness = freshness;
+                            if let Some(quota) = refreshed_quota {
+                                if matches!(quota.link.codex, CodexLinkStatus::Ok) {
+                                    let _ = save_cached_snapshot(&snapshot_path, &quota);
+                                    last_trusted_quota = Some(quota.clone());
+                                }
+                                current_quota = quota;
+                            } else {
+                                current_quota.upstream_freshness = freshness;
+                            }
                             if let Ok(mut latest) = quota_state.write() {
                                 *latest = current_quota.clone();
                             }
@@ -2919,6 +2934,11 @@ mod ui_contract_tests {
         freshness.usage.status = UpstreamFreshnessStatus::Current;
         assert_eq!(upstream_usage_label(&freshness, false).0, "已同步");
         assert_eq!(upstream_usage_label(&freshness, true).0, "同步中");
+    }
+
+    #[test]
+    fn windows_owns_a_low_frequency_upstream_confirmation_cadence() {
+        assert_eq!(UPSTREAM_CONFIRMATION_INTERVAL.as_secs(), 45);
     }
 
     #[test]

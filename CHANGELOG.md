@@ -8,6 +8,19 @@ This file records user-visible changes in each public version. Release dates fol
 >
 > Before `0.3.0`, Windows, AstroBox, and band RPK versions were not always synchronized. Early entries identify the affected component.
 
+## [0.6.4] - 2026-08-13
+
+### 修复 / Fixed
+
+- Windows 改为每 45 秒主动确认一次官方额度；手机的刷新请求只作额外触发，不再由手机后台任务单独承担实时性。
+- 额度确认在两分钟内保持“已同步”，用于容忍两次短暂网络延迟；超过两分钟仍会诚实降级为“缓存”。
+- 手环缓存时长改用额度最近一次官方确认时间，不再把旧缓存刚传到手环的时间显示成“缓存刚刚”。
+
+### 验证 / Validation
+
+- Windows 与安卓手机已完成覆盖安装和联动验收；停止手机 App 52 秒后，Windows 仍能独立完成下一次官方额度确认。
+- 手环协议和界面保持兼容；现有 `0.6.3` RPK 无需强制升级，新安装用户仍可下载三端统一的 `0.6.4` 文件。
+
 ## [0.6.3] - 2026-08-13
 
 ### 新增 / Added

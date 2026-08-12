@@ -194,7 +194,7 @@ test("built page applies Snapshot v1 to the visible weekly quota and reset inven
   );
 });
 
-test("built page turns an otherwise healthy snapshot into a cached relative status after one minute", async () => {
+test("built page tolerates two refresh intervals before showing cached quota", async () => {
   await withBuiltPage((pageExports) => {
     pageExports.entry(pageExports);
     const component = pageExports.default;
@@ -202,6 +202,13 @@ test("built page turns an otherwise healthy snapshot into a cached relative stat
     viewModel.hasSnapshot = true;
     viewModel.snapshotStatusText = "已同步";
     viewModel.snapshotStatusTone = "healthy";
+    viewModel.lastSnapshotAtMs = Date.now() - 119_999;
+
+    component.updateSyncFreshness.call(viewModel);
+
+    assert.equal(viewModel.statusText, "已同步");
+    assert.equal(viewModel.statusTone, "healthy");
+
     viewModel.lastSnapshotAtMs = Date.now() - 121_000;
 
     component.updateSyncFreshness.call(viewModel);

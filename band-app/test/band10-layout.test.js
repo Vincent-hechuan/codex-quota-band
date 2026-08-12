@@ -83,12 +83,12 @@ test("built Band 10 page uses two vertically swipable pages with one accent dot 
   });
 });
 
-test("built release package keeps product version 0.6.3 with an installable hand-band revision", async () => {
+test("built release package keeps product version 0.6.4 with an installable hand-band revision", async () => {
   const manifest = JSON.parse(await readFile(builtManifestUrl, "utf8"));
-  assert.equal(manifest.versionName, "0.6.3");
+  assert.equal(manifest.versionName, "0.6.4");
   assert.equal(
     manifest.versionCode,
-    605,
+    606,
     "the hand-band install sequence advances without changing the product version",
   );
 });

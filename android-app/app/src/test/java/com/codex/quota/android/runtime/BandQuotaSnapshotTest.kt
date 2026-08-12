@@ -95,6 +95,10 @@ class BandQuotaSnapshotTest {
     val payload = buildBandQuotaSnapshot(snapshot).jsonObject
 
     assertEquals("partial", payload.getValue("sourceStatus").jsonPrimitive.content)
+    assertEquals(
+      "1970-01-01T00:00:00.5Z",
+      payload.getValue("generatedAt").jsonPrimitive.content,
+    )
     assertFalse(payload.containsKey("upstreamFreshness"))
     assertFalse(payload.toString().contains("lastAttemptAt"))
     assertFalse(payload.toString().contains("lastSuccessAt"))
@@ -118,7 +122,10 @@ class BandQuotaSnapshotTest {
           ),
       )
 
-    val payload = buildBandQuotaSnapshot(snapshot, nowMs = 61_001).jsonObject
+    val stillFresh = buildBandQuotaSnapshot(snapshot, nowMs = 120_999).jsonObject
+    assertEquals("ok", stillFresh.getValue("sourceStatus").jsonPrimitive.content)
+
+    val payload = buildBandQuotaSnapshot(snapshot, nowMs = 121_001).jsonObject
 
     assertEquals("partial", payload.getValue("sourceStatus").jsonPrimitive.content)
     assertFalse(payload.toString().contains("upstreamFreshness"))

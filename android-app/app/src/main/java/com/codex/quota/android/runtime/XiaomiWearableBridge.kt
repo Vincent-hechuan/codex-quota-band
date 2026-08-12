@@ -411,7 +411,9 @@ internal fun buildBandQuotaSnapshot(
 ): JsonElement =
   buildJsonObject {
     put("protocolVersion", JsonPrimitive(BAND_QUOTA_VERSION))
-    put("generatedAt", JsonPrimitive(formatBandTimestamp(snapshot.generatedAtMs)))
+    // The current RPK uses generatedAt to render cache age. Forward the time when quota was last
+    // confirmed, not the time an already-stale envelope happened to reach the band.
+    put("generatedAt", JsonPrimitive(formatBandTimestamp(snapshot.bandConfirmationAtMs())))
     put("sourceStatus", JsonPrimitive(snapshot.effectiveBandSourceStatus(nowMs).bandValue()))
     if (snapshot.limitsCollectedAtMs == null) put("limitsCollectedAt", JsonNull)
     else put("limitsCollectedAt", JsonPrimitive(formatBandTimestamp(snapshot.limitsCollectedAtMs)))
@@ -507,6 +509,9 @@ private fun QuotaSnapshot.effectiveBandSourceStatus(nowMs: Long): QuotaSourceSta
   }
 }
 
+private fun QuotaSnapshot.bandConfirmationAtMs(): Long =
+  upstreamFreshness?.usage?.lastSuccessAtMs ?: generatedAtMs
+
 private fun QuotaWindowStatus.bandValue() =
   when (this) {
     QuotaWindowStatus.Current -> "current"
@@ -538,7 +543,7 @@ private fun CodexLinkStatus.bandValue() =
   }
 
 private const val BAND_QUOTA_VERSION = 2
-private const val BAND_CURRENT_QUOTA_MAX_AGE_MS = 60_000L
+private const val BAND_CURRENT_QUOTA_MAX_AGE_MS = 120_000L
 private const val FIVE_HOUR_WINDOW_MINUTES = 300
 private const val DEMO_FIVE_HOUR_PERCENT = 68
 private const val DEMO_FIVE_HOUR_RESET_DELAY_MS = 3 * 60 * 60_000L

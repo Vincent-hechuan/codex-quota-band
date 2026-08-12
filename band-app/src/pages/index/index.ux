@@ -70,7 +70,7 @@ const CACHE_KEY = 'codex-quota-snapshot-v1'
 const TASK_CACHE_KEY = 'codex-task-snapshot-v1'
 const REFRESH_INTERVAL = 5000
 const REQUEST_TIMEOUT = 5000
-const FRESH_SYNC_MAX_AGE = 60000
+const FRESH_SYNC_MAX_AGE = 120000
 const connection = interconnect.instance()
 const STATUS_ALIASES = { '手机链路断开': '离线', '手机链路异常': '离线', '等待手机链路': '离线', '链路状态异常': '离线', '电脑未连接': '离线', '局域网不可用': '离线', '同步超时': '离线', '发送失败': '离线', '显示缓存': '缓存', '缓存不可用': '缓存异常', '缓存读取失败': '缓存异常', '额度格式异常': '数据异常' }
 

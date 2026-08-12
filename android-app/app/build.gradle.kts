@@ -32,10 +32,10 @@ android {
     applicationId = "com.codex.quota.android"
     minSdk = 26
     targetSdk = 36
-    // Keep the install sequence monotonic so 0.6.3 can replace earlier releases
+    // Keep the install sequence monotonic so 0.6.4 can replace earlier releases
     // without uninstalling user pairing data.
-    versionCode = 605
-    versionName = "0.6.3"
+    versionCode = 606
+    versionName = "0.6.4"
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     buildConfigField("boolean", "DEMO_FIVE_HOUR_QUOTA", demoFiveHourQuota.toString())
   }

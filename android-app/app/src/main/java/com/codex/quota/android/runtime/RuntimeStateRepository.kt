@@ -271,6 +271,8 @@ class RuntimeStateRepository(
   private companion object {
     const val WEEKLY_WINDOW_MINUTES = 10_080
     const val FIVE_HOUR_WINDOW_MINUTES = 300
-    const val CURRENT_QUOTA_MAX_AGE_MS = 60_000L
+    // Windows confirms every 45 seconds. Two minutes tolerates two delayed attempts without
+    // presenting genuinely old quota as current.
+    const val CURRENT_QUOTA_MAX_AGE_MS = 120_000L
   }
 }
