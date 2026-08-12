@@ -368,7 +368,7 @@ impl QuotaCollector {
         } else {
             None
         };
-        let session = if usage.is_none() {
+        let session = if direct_usage.is_none() && usage.is_none() {
             read_latest_rate_limits(&self.paths.sessions_path)?
         } else {
             None
@@ -1444,6 +1444,53 @@ mod tests {
         assert_eq!(snapshot.reset_inventory.available_count, Some(1));
         assert_eq!(snapshot.reset_inventory.items[0].id, "reset-1");
         assert_eq!(snapshot.link.codex, CodexLinkStatus::Ok);
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn direct_usage_bypasses_the_legacy_session_scan() {
+        let root = std::env::temp_dir().join(format!(
+            "codex-quota-direct-usage-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        create_dir_all(&root).unwrap();
+        let sessions_path = root.join("sessions-must-not-be-read");
+        write(&sessions_path, b"not a directory").unwrap();
+        let usage_path = root.join(DIRECT_USAGE_CACHE_FILE);
+        let now = DateTime::parse_from_rfc3339("2026-07-24T10:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        save_direct_usage(
+            &usage_path,
+            &DirectUsageSnapshot {
+                schema_version: 1,
+                fetched_at: format_timestamp(now),
+                windows: vec![QuotaWindow {
+                    id: "codex:primary:300".to_string(),
+                    name: "five_hour".to_string(),
+                    window_minutes: 300,
+                    remaining_percent: Some(68),
+                    resets_at: "2026-07-24T15:00:00.000Z".to_string(),
+                    status: QuotaWindowStatus::Current,
+                }],
+            },
+        )
+        .unwrap();
+        let collector = QuotaCollector::new(CodexDataPaths {
+            sessions_path,
+            reset_cache_path: None,
+            auth_path: root.join("auth.json"),
+            direct_reset_cache_path: root.join(DIRECT_RESET_CACHE_FILE),
+            direct_usage_cache_path: usage_path,
+            direct_freshness_cache_path: root.join(DIRECT_FRESHNESS_CACHE_FILE),
+        });
+
+        let snapshot = collector.collect(now).expect("direct usage snapshot");
+        assert_eq!(snapshot.windows[0].remaining_percent, Some(68));
 
         let _ = fs::remove_dir_all(root);
     }

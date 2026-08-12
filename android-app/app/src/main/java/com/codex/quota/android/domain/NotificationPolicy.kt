@@ -23,7 +23,6 @@ enum class BandAlertBehavior {
 
 data class AlertContext(
   val chatGptFocused: Boolean,
-  val androidForeground: Boolean,
   val reconnect: Boolean,
 )
 
@@ -67,7 +66,6 @@ class NotificationPolicy private constructor(
     if (
       !eventEnabled ||
         !timingAllows ||
-        context.androidForeground ||
         (context.reconnect && state == TaskState.WaitingForReview) ||
         (!phone && !band)
     ) {
@@ -81,7 +79,7 @@ class NotificationPolicy private constructor(
         if (phone) {
           when (state) {
             TaskState.NeedsAuthorization -> PhoneUrgency.Vibrate
-            TaskState.WaitingForReview -> PhoneUrgency.Silent
+            TaskState.WaitingForReview -> PhoneUrgency.Vibrate
             TaskState.Running -> null
           }
         } else {

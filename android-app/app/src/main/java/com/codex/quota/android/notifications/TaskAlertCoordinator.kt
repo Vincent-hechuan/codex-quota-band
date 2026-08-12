@@ -15,7 +15,6 @@ class TaskAlertCoordinator(
 ) {
   private val lock = Any()
   private val previousStates = mutableMapOf<String, TaskState>()
-  private var androidForeground = false
   private var policy = NotificationPolicy.default()
 
   fun ingest(snapshot: TaskSnapshot, reconnect: Boolean) {
@@ -30,7 +29,6 @@ class TaskAlertCoordinator(
             task.state,
             AlertContext(
               chatGptFocused = snapshot.chatGptFocused,
-              androidForeground = androidForeground,
               reconnect = reconnect && previousState == null,
             ),
           )
@@ -38,10 +36,6 @@ class TaskAlertCoordinator(
         if (delivery.band) bandDispatcher(task)
       }
     }
-  }
-
-  fun setAndroidForeground(foreground: Boolean) {
-    synchronized(lock) { androidForeground = foreground }
   }
 
   fun updateSettings(settings: NotificationSettings) {

@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <strong>当前版本：0.6.2</strong>
+  <strong>当前版本：0.6.3</strong>
 </p>
 
 ## 它能做什么
@@ -45,13 +45,13 @@
 
 ## 下载
 
-请从 [GitHub Releases](https://github.com/Vincent-hechuan/codex-quota-band/releases) 下载同一版本的三个文件。以下为 `0.6.2`：
+请从 [GitHub Releases](https://github.com/Vincent-hechuan/codex-quota-band/releases) 下载同一版本的三个文件。以下为 `0.6.3`：
 
 | 安装位置 | 文件 |
 | --- | --- |
-| Windows 电脑 | `Codex-Quota-Setup-0.6.2.exe` |
-| 安卓手机 | `CodexQuota-0.6.2.apk` |
-| 小米手环 10 | `com.codex.quota.android.release.0.6.2.rpk` |
+| Windows 电脑 | `Codex-Quota-Setup-0.6.3.exe` |
+| 安卓手机 | `CodexQuota-0.6.3.apk` |
+| 小米手环 10 | `com.codex.quota.android.release.0.6.3.rpk` |
 
 三个文件的版本号必须一致。不要从不明网站下载安装包。
 
@@ -59,15 +59,15 @@
 
 ### 第一步：安装 Windows 程序
 
-1. 双击 `Codex-Quota-Setup-0.6.2.exe`。
+1. 双击 `Codex-Quota-Setup-0.6.3.exe`。
 2. 安装完成后，Codex额度会出现在任务栏右下角的通知区域；如果没有看到，请点击 `^`。
-3. 安装完成页会默认启动程序并显示配对二维码。
+3. 安装完成页会默认启动程序并显示配对二维码和 6 位配对码。
 4. 重启 ChatGPT，在「ChatGPT → 设置 → 钩子 → 信任全部钩子」中确认以下四项已开启：
    `PreToolUse`、`PermissionRequest`、`UserPromptSubmit`、`Stop`。
 
 ### 第二步：安装安卓应用
 
-1. 在手机上安装 `CodexQuota-0.6.2.apk`。
+1. 在手机上安装 `CodexQuota-0.6.3.apk`。
 2. 打开「小米运动健康」，确认手环仍然在线。
 3. 打开手机上的「Codex额度」。
 4. 建议在手机系统中为 Codex额度开启：
@@ -80,12 +80,14 @@
 ### 第三步：连接手机和电脑
 
 1. 确认手机和电脑连接同一个局域网。
-2. 右键 Windows 通知区域中的「Codex额度」，选择「显示配对二维码…」。
-3. 在手机「Codex额度 → 设置」中点击「扫码连接电脑」。
-4. 扫描电脑上的二维码并按提示完成配对。
-5. 配对成功后，手机首页会显示电脑“已连接”，额度和任务会自动同步。
+2. 右键 Windows 通知区域中的「Codex额度」，选择「连接手机…」。
+3. 在手机「Codex额度 → 设置」中点击「连接电脑」。
+4. 优先选择「扫描二维码」，直接使用 Codex额度内置相机扫描；无法扫码时选择「输入配对码」。
+5. 手动配对时输入 Windows 显示的 6 位数字，并确认手机与电脑显示的安全校验码一致。
+6. 配对成功后，手机首页会显示电脑“已连接”，额度和任务会自动同步。
 
-二维码只在短时间内有效。过期后，从 Windows 通知区域重新生成即可，不需要手动输入电脑地址或配对码。
+二维码和配对码只在 5 分钟内有效，并且成功使用一次后立即失效。手动配对会自动查找同一局域网中的电脑，不需要填写 IP 地址。
+Windows 已有配对窗口时，再次点击托盘入口只会把原窗口置前；需要新二维码或配对码时，点击窗口底部的“刷新配对码”。
 
 ### 第四步：安装手环应用
 
@@ -94,7 +96,7 @@ AstroBox 只在安装或升级手环应用时临时使用，不参与日常同�
 1. 临时打开 [AstroBox](https://astrobox.online/downloads/)。
 2. 进入已连接的小米手环 10 设备页面。
 3. 打开「快应用数量」右上角的设置。
-4. 点击 `+`，导入 `com.codex.quota.android.release.0.6.2.rpk`。
+4. 点击 `+`，导入 `com.codex.quota.android.release.0.6.3.rpk`。
 5. 等待安装动画结束。
 6. 安装完成后退出 AstroBox，重新确认「小米运动健康」仍显示手环已连接。
 7. 在手机「Codex额度 → 设置」中点击「检查手环连接」，按系统提示授权。

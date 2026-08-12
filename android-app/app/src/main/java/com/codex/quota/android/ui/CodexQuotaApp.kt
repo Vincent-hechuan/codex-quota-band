@@ -91,12 +91,12 @@ private enum class AppTab(val label: String, val icon: ImageVector) {
 fun CodexQuotaApp(
   state: AppUiState,
   modifier: Modifier = Modifier,
-  appVersion: String = "0.6.2",
+  appVersion: String = "0.6.3",
   availableUpdate: AppRelease? = null,
   notificationSettings: NotificationSettings = NotificationSettings.Default,
   onNotificationSettingsChange: (NotificationSettings) -> Unit = {},
   onOpenNotificationSettings: () -> Unit = {},
-  onOpenPairingCamera: () -> Unit = {},
+  onConnectComputer: () -> Unit = {},
   onCheckBandConnection: () -> Unit = {},
   onExportDiagnostics: () -> Unit = {},
   onCheckForUpdates: () -> Unit = {},
@@ -183,7 +183,7 @@ fun CodexQuotaApp(
               settings = notificationSettings,
               onSettingsChange = onNotificationSettingsChange,
               onOpenNotificationSettings = onOpenNotificationSettings,
-              onOpenPairingCamera = onOpenPairingCamera,
+              onConnectComputer = onConnectComputer,
               onExportDiagnostics = onExportDiagnostics,
               appVersion = appVersion,
               onCheckForUpdates = onCheckForUpdates,
@@ -719,7 +719,7 @@ private fun SettingsScreen(
   settings: NotificationSettings,
   onSettingsChange: (NotificationSettings) -> Unit,
   onOpenNotificationSettings: () -> Unit,
-  onOpenPairingCamera: () -> Unit,
+  onConnectComputer: () -> Unit,
   onExportDiagnostics: () -> Unit,
   appVersion: String,
   onCheckForUpdates: () -> Unit,
@@ -734,26 +734,22 @@ private fun SettingsScreen(
     item { SettingsPageHeader(state, nowMs) }
     item {
       SettingsGroup("连接与设备") {
-        SettingsActionRow("扫码连接电脑", "扫描 Windows 托盘中的配对二维码", "›", onOpenPairingCamera)
+        SettingsActionRow("连接电脑", "扫描二维码或输入配对码", "›", onConnectComputer)
       }
     }
     item {
       SettingsGroup("提醒") {
         Column(modifier = Modifier.padding(vertical = 11.dp)) {
           Text("通知时机", fontSize = CodexTokens.Type.Body, fontWeight = FontWeight.SemiBold)
-          Text("仅在 ChatGPT 失焦时", modifier = Modifier.padding(top = 3.dp, bottom = 8.dp), fontSize = CodexTokens.Type.Caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
+          Text(reminderTimingDescription(settings.timing), modifier = Modifier.padding(top = 3.dp, bottom = 8.dp), fontSize = CodexTokens.Type.Caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
           ReminderTimingControl(settings.timing) { onSettingsChange(settings.copy(timing = it)) }
         }
         SettingsDivider()
-        SettingsSwitchRow("需要授权提醒", "手机和手环", settings.needsAuthorization) { onSettingsChange(settings.copy(needsAuthorization = it)) }
+        SettingsSwitchRow("手机通知", "在手机上接收任务提醒", settings.phoneNotifications) { onSettingsChange(settings.copy(phoneNotifications = it)) }
         SettingsDivider()
-        SettingsSwitchRow("等待查看提醒", "手机和手环", settings.waitingForReview) { onSettingsChange(settings.copy(waitingForReview = it)) }
+        SettingsSwitchRow("手环通知", "在手环上接收任务提醒", settings.bandNotifications) { onSettingsChange(settings.copy(bandNotifications = it)) }
         SettingsDivider()
-        SettingsSwitchRow("手机通知", "受 Android 系统权限控制", settings.phoneNotifications) { onSettingsChange(settings.copy(phoneNotifications = it)) }
-        SettingsDivider()
-        SettingsSwitchRow("手环提醒", "震动由小米运动健康和手环系统决定", settings.bandNotifications) { onSettingsChange(settings.copy(bandNotifications = it)) }
-        SettingsDivider()
-        SettingsActionRow("Android 系统通知设置", "打开系统通知渠道设置", "›", onOpenNotificationSettings)
+        SettingsActionRow("系统通知设置", "调整通知权限、悬浮通知和振动", "›", onOpenNotificationSettings)
       }
     }
     item {
@@ -1148,6 +1144,12 @@ private fun reminderTimingLabel(timing: ReminderTiming): String = when (timing) 
   ReminderTiming.Always -> "始终"
 }
 
+internal fun reminderTimingDescription(timing: ReminderTiming): String = when (timing) {
+  ReminderTiming.Never -> "不发送任务提醒"
+  ReminderTiming.Unfocused -> "仅当 ChatGPT 客户端处于后台时提醒"
+  ReminderTiming.Always -> "无论 ChatGPT 客户端是否在前台都提醒"
+}
+
 private fun emptyTaskLabel(state: AppUiState): String = when {
   state.connections.computer == DeviceLinkState.Disconnected -> "电脑离线"
   state.chatGptState == ChatGptState.HookUnavailable -> "任务状态不可用"
@@ -1158,7 +1160,7 @@ private fun emptyTaskLabel(state: AppUiState): String = when {
 private fun displayTaskTitle(task: SyncedTask, hidden: Boolean): String = TaskTitleFormatter.display(task.title, hidden)
 
 @Composable
-private fun CodexQuotaTheme(content: @Composable () -> Unit) {
+fun CodexQuotaTheme(content: @Composable () -> Unit) {
   MaterialTheme(colorScheme = if (androidx.compose.foundation.isSystemInDarkTheme()) CodexDarkColors else CodexLightColors, content = content)
 }
 

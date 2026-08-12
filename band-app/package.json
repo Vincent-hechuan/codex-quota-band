@@ -1,6 +1,6 @@
 {
   "name": "codex-quota-band",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "private": true,
   "type": "module",
   "description": "Codex quota viewer for Xiaomi Smart Band 10",

@@ -4,6 +4,7 @@ pub mod foreground;
 pub mod hook;
 pub mod host;
 pub mod network;
+pub mod pairing_discovery;
 pub mod quota;
 pub mod storage;
 

@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.net.toUri
 import com.codex.quota.android.diagnostics.DiagnosticReport
 import com.codex.quota.android.permissions.shouldRequestNotificationPermission
+import com.codex.quota.android.protocol.PairingDiscoveryWireContract
 import com.codex.quota.android.ui.AppUiState
 import com.codex.quota.android.ui.CodexQuotaApp
 import com.codex.quota.android.ui.FiveHourQuotaAvailability
@@ -56,6 +56,24 @@ class MainActivity : ComponentActivity() {
   }
   private val notificationPermissionLauncher =
     registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+  private val pairingLauncher =
+    registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+      if (result.resultCode != RESULT_OK) return@registerForActivityResult
+      val rawLink = result.data?.getStringExtra(com.codex.quota.android.pairing.PairingActivity.EXTRA_PAIRING_LINK)
+      if (rawLink != null) {
+        (application as CodexQuotaApplication).handlePairingLink(rawLink.toUri())
+        return@registerForActivityResult
+      }
+      val discoveryPayload =
+        result.data?.getStringExtra(com.codex.quota.android.pairing.PairingActivity.EXTRA_DISCOVERY_PAYLOAD)
+          ?: return@registerForActivityResult
+      val pairingCode =
+        result.data?.getStringExtra(com.codex.quota.android.pairing.PairingActivity.EXTRA_PAIRING_CODE)
+          ?: return@registerForActivityResult
+      runCatching { PairingDiscoveryWireContract.decode(discoveryPayload).withPairingCode(pairingCode) }
+        .onSuccess { (application as CodexQuotaApplication).handlePairingOffer(it) }
+        .onFailure { Toast.makeText(this, "配对信息无效，请重新获取", Toast.LENGTH_LONG).show() }
+    }
   private var pendingDiagnosticJson: String? = null
   private val diagnosticExportLauncher =
     registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -103,7 +121,7 @@ class MainActivity : ComponentActivity() {
           quotaApplication.updateNotificationSettings(updatedSettings)
         },
         onOpenNotificationSettings = ::openNotificationSettings,
-        onOpenPairingCamera = ::openPairingCamera,
+        onConnectComputer = ::openPairing,
         onCheckBandConnection = {
           Toast.makeText(this, "正在检查手环连接", Toast.LENGTH_SHORT).show()
           quotaApplication.checkBandConnection { result ->
@@ -137,13 +155,7 @@ class MainActivity : ComponentActivity() {
 
   override fun onStart() {
     super.onStart()
-    (application as CodexQuotaApplication).setAndroidForeground(true)
     checkForUpdates(manual = false)
-  }
-
-  override fun onStop() {
-    (application as CodexQuotaApplication).setAndroidForeground(false)
-    super.onStop()
   }
 
   override fun onDestroy() {
@@ -187,20 +199,8 @@ class MainActivity : ComponentActivity() {
       .onFailure { startActivity(applicationDetails) }
   }
 
-  private fun openPairingCamera() {
-    val cameraIntent =
-      Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    val fallbackIntent =
-      Intent(MediaStore.ACTION_IMAGE_CAPTURE).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    val intent =
-      when {
-        cameraIntent.resolveActivity(packageManager) != null -> cameraIntent
-        fallbackIntent.resolveActivity(packageManager) != null -> fallbackIntent
-        else -> null
-      }
-    if (intent != null) {
-      startActivity(intent)
-    }
+  private fun openPairing() {
+    pairingLauncher.launch(Intent(this, com.codex.quota.android.pairing.PairingActivity::class.java))
   }
 
   private fun requestDiagnosticExport(state: AppUiState) {

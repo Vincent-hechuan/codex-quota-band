@@ -12,6 +12,7 @@ enum class StreamIngestResult {
 
 class SyncStreamSession(
   private val repository: RuntimeStateRepository,
+  private val onNegotiated: (connectionId: String) -> Unit = {},
   private val onTasksAccepted: (TaskSnapshot, reconnect: Boolean) -> Unit = { _, _ -> },
 ) {
   private val lock = Any()
@@ -59,6 +60,7 @@ class SyncStreamSession(
     lastSequence = null
     firstSnapshotForConnection = true
     repository.markTransportConnected()
+    onNegotiated(frame.connectionId)
     return StreamIngestResult.Accepted
   }
 

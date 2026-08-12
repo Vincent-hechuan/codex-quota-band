@@ -107,9 +107,13 @@ class SyncWebSocketClient(
     val identity = PinnedComputerIdentity.fromHex(credentials.computerFingerprintHex)
     val client = PinnedWebSocketClientFactory.create(identity)
     val session =
-      SyncStreamSession(repository) { snapshot, reconnect ->
-        taskAlerts?.ingest(snapshot, reconnect)
-      }
+      SyncStreamSession(
+        repository = repository,
+        onTasksAccepted = { snapshot, reconnect -> taskAlerts?.ingest(snapshot, reconnect) },
+        onNegotiated = { connectionId ->
+          activeWebSocket?.send(SyncRefreshRequestWireContract.encode(connectionId))
+        },
+      )
     activeSession = session
     try {
       suspendCancellableCoroutine { continuation ->

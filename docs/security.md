@@ -1,9 +1,9 @@
 # 安全说明
 
-## 0.5.2 Android 新架构
+## 当前 Android 新架构（始于 0.5.2）
 
-0.5.2 不沿用旧 AstroBox 架构的明文 HTTP/Bearer 传输。实现要求 Windows 与 Android
-首次扫码后固定 Windows 身份，配对和日常同步都通过 TLS 1.3 加密连接完成；局域网发现只提供候选
+当前架构不沿用旧 AstroBox 架构的明文 HTTP/Bearer 传输。实现要求 Windows 与 Android
+首次配对后固定 Windows 身份，配对和日常同步都通过 TLS 1.3 加密连接完成；局域网发现只提供候选
 地址，不能建立信任。具体决策见 `docs/adr-003-encrypted-lan-pairing.md` 和
 `docs/adr-004-tls-sync-stream.md`。
 
@@ -21,7 +21,7 @@
 RPK，不保存 Android 配对令牌，也不参与日常消息转发。手环请求只允许 `quota_request` 和
 额度快照/错误响应，未知消息、控制指令和原始任务内容都会被忽略。
 
-以下网络边界和已知限制中，标明“历史架构”的内容不适用于 0.5.2。
+以下网络边界和已知限制中，标明“历史架构”的内容不适用于当前 Android 新架构。
 
 ## 数据最小化
 
@@ -34,8 +34,10 @@ RPK，不保存 Android 配对令牌，也不参与日常消息转发。手环�
 - Windows 服务只接受回环、RFC1918、IPv4 链路本地、IPv6 ULA/链路本地来源。
 - 未携带有效 Bearer 凭据的快照请求返回 401。
 - 6 位配对码有效 5 分钟，最多尝试 3 次，成功后立即失效。
-- 0.5.2 扫码引导使用 Android `codexquota://pair` DeepLink；载荷只允许协议版本、固定类型、1–8 个私网数字 IPv4 WSS 地址和 6 位码，拒绝未知字段、公网地址、域名、路径与额外凭据。旧版 AstroBox `plugdata` 仅属于历史架构。
+- 当前扫码引导使用 Android `codexquota://pair` DeepLink；载荷只允许协议版本、固定类型、1–8 个私网数字 IPv4 WSS 地址和 6 位码，拒绝未知字段、公网地址、域名、路径与额外凭据。旧版 AstroBox `plugdata` 仅属于历史架构。
 - 二维码不包含长期 Bearer 令牌或 ChatGPT/Codex 登录凭据。DeepLink 即使被其他本机应用观察到，也只暴露与屏幕手动配对等价、5 分钟且单次有效的临时材料。
+- 手机内置扫码只识别 `codexquota://pair`，完整载荷仍由严格协议解析器复核；相机画面只在本机实时分析，不保存、不上传。
+- 手动模式的 UDP 局域网公告只包含协议版本、电脑公钥指纹、私网 WSS 候选地址和过期时间，不包含 6 位配对码、长期令牌或账号内容。手机必须先让用户核对由公钥指纹生成的 `XXXX-XXXX` 安全校验码，确认一致后才提交配对码。
 - 长期令牌由 32 字节系统随机数生成；Windows 只持久化 SHA-256 哈希，可从托盘全部撤销。
 - 请求体限制为 4 KiB，Snapshot 响应在手机桥接层限制为 64 KiB。
 - 日志只记录时间、事件名与 HTTP 状态码，不记录配对码、令牌、请求体或完整快照。
@@ -44,7 +46,7 @@ RPK，不保存 Android 配对令牌，也不参与日常消息转发。手环�
 
 - 局域网链路使用 TLS 1.3 WSS；MVP 仍要求可信局域网，不提供公网中继或不受信任网络穿透。
 - 当前 Windows 安装包未代码签名，公开测试版可能触发 Windows「未知发布者」提示。用户应只从本仓库 Releases 下载并核对 SHA-256；正式大规模分发前应增加可信代码签名。
-- 旧版 AstroBox API 3 未提供 Android Keystore/StrongBox 凭据接口；该限制只影响 0.3.x 历史插件。0.5.2 的 Android 应用使用 Android Keystore 保存配对凭据，日常不依赖 AstroBox。
+- 旧版 AstroBox API 3 未提供 Android Keystore/StrongBox 凭据接口；该限制只影响 0.3.x 历史插件。当前 Android 应用使用 Android Keystore 保存配对凭据，日常不依赖 AstroBox。
 - Vela 官方构建工具链存在仅限开发依赖的 npm 审计告警；RPK 生产包不包含 node_modules，`npm audit --omit=dev` 为 0。
 
 ## 撤销与恢复

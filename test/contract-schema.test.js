@@ -134,3 +134,21 @@ test("the sync stream contract accepts negotiated quota v3 and keeps it closed",
   assert.equal(validate(frame), true, JSON.stringify(validate.errors, null, 2));
   assert.equal(validate({ ...frame, quota: { ...quota, token: "private" } }), false);
 });
+
+test("manual pairing discovery contains identity but no pairing secret", async () => {
+  const schema = JSON.parse(
+    await readFile(new URL("../contract/pairing-discovery-v1.schema.json", import.meta.url), "utf8"),
+  );
+  const validate = new Ajv({ allErrors: true }).compile(schema);
+  const discovery = {
+    protocolVersion: 1,
+    type: "pairing_discovery",
+    computerFingerprint: "ab".repeat(32),
+    endpoints: ["wss://192.168.1.42:17322/pair"],
+    expiresAtMs: 1784880300000,
+  };
+
+  assert.equal(validate(discovery), true, JSON.stringify(validate.errors, null, 2));
+  assert.equal(validate({ ...discovery, code: "123456" }), false);
+  assert.equal(validate({ ...discovery, token: "private" }), false);
+});

@@ -11,6 +11,7 @@ use codex_quota_windows_core::host::{
     HostPaths, HostPublisher, PairingPresentation, WindowsHost, private_ipv4_addresses,
 };
 use codex_quota_windows_core::network::SyncPayload;
+use codex_quota_windows_core::pairing_discovery::PairingDiscoveryAnnouncement;
 use codex_quota_windows_core::quota::{
     QuotaCollector, UpstreamConfirmationErrorCode, load_cached_snapshot, save_cached_snapshot,
 };
@@ -40,6 +41,7 @@ use windows_sys::Win32::UI::Shell::*;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
 
 const APP_NAME: &str = "Codex额度";
+const APP_ICON_RESOURCE_ID: usize = 101;
 const HOST_PORT: u16 = 17_322;
 const TRAY_ICON_ID: u32 = 1;
 const TRAY_MESSAGE: u32 = WM_APP + 1;
@@ -63,7 +65,7 @@ const UI_WAITING: u32 = rgb(25, 128, 82);
 const UI_CACHED: u32 = rgb(104, 118, 128);
 const UI_BORDER: u32 = rgb(212, 222, 226);
 const PAIRING_WIDTH: i32 = 460;
-const PAIRING_HEIGHT: i32 = 560;
+const PAIRING_HEIGHT: i32 = 620;
 const PAIRING_TUTORIAL_WIDTH: i32 = 440;
 const PAIRING_TUTORIAL_HEIGHT: i32 = 360;
 const PAIRING_TUTORIAL_WINDOW_STYLE: WINDOW_STYLE = WS_POPUP | WS_BORDER;
@@ -71,15 +73,23 @@ const DIAGNOSTICS_WIDTH: i32 = 480;
 const DIAGNOSTICS_HEIGHT: i32 = 340;
 const DIAGNOSTICS_ROW_HEIGHT: i32 = 48;
 const PAIRING_SURFACE_RADIUS: i32 = 32;
-const PAIRING_HOOK_GUIDANCE: &str = "使用手机端「Codex额度」App 扫描二维码";
-const PAIRING_APP_GUIDANCE: &str = "打开 App → 设置 → 扫码连接电脑";
-const PAIRING_NETWORK_GUIDANCE: &str = "确保手机和电脑在同一局域网·5分钟内有效";
+const PAIRING_TITLE_SIZE: i32 = 20;
+const PAIRING_BODY_SIZE: i32 = 12;
+const PAIRING_SUPPORT_SIZE: i32 = 10;
+const PAIRING_GUIDANCE_SIZE: i32 = 13;
+const PAIRING_CODE_SIZE: i32 = 22;
+const PAIRING_QR_SIZE: i32 = 286;
+const PAIRING_QR_TOP: i32 = 96;
+const PAIRING_HOOK_GUIDANCE: &str = "使用手机端「Codex额度」App 扫码";
+const PAIRING_APP_GUIDANCE: &str = "打开 App → 设置 → 连接电脑";
+const PAIRING_NETWORK_GUIDANCE: &str = "确保手机和电脑连接同一局域网";
 const PAIRING_TUTORIAL_BUTTON_LABEL: &str = "配对教学";
+const PAIRING_REFRESH_BUTTON_LABEL: &str = "刷新配对码";
 const PAIRING_TUTORIAL_STEPS: [&str; 4] = [
     "1. 在电脑托盘菜单中选择「安装/修复任务 Hook」",
     "2. 在 ChatGPT 中打开「设置 → 钩子」，并信任全部钩子",
-    "3. 在手机端打开「Codex额度」App，进入「设置 → 扫码连接电脑」",
-    "4. 扫描电脑上的二维码完成配对",
+    "3. 在手机端打开「Codex额度」App，进入「设置 → 连接电脑」",
+    "4. 扫描二维码或输入 6 位配对码完成配对",
 ];
 const HOOK_INSTALLED_GUIDANCE: &str =
     "任务 Hook 已安装或修复。\n请在 ChatGPT 中打开「设置 → 钩子」，并信任全部钩子。";
@@ -199,6 +209,34 @@ impl AppController {
 struct PairingWindowData {
     modules: Vec<bool>,
     width: usize,
+    pairing_code: String,
+    security_code: String,
+    manual_discovery_available: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PairingOpenAction {
+    FocusExisting,
+    CreateOffer,
+}
+
+fn pairing_open_action(existing_window: bool) -> PairingOpenAction {
+    if existing_window {
+        PairingOpenAction::FocusExisting
+    } else {
+        PairingOpenAction::CreateOffer
+    }
+}
+
+#[derive(Clone, Copy)]
+struct PairingWindowBottomLayout {
+    app_guidance: RECT,
+    manual_guidance: RECT,
+    pairing_code: RECT,
+    security_code: RECT,
+    network_guidance: RECT,
+    refresh_button: RECT,
+    tutorial_button: RECT,
 }
 
 fn main() {
@@ -324,15 +362,7 @@ fn run(show_onboarding: bool) -> Result<(), String> {
             show_pairing_from_app();
         }
         if cfg!(debug_assertions) && std::env::args().any(|argument| argument == "--show-pairing") {
-            if let Some(app) = APP.get() {
-                if let Ok(presentation) = app.pairing_presentation() {
-                    if let Err(error) = show_pairing_window(presentation) {
-                        show_message("调试配对窗口失败", &error, MB_ICONWARNING);
-                    }
-                } else {
-                    show_message("调试配对窗口失败", "没有可用的私网地址", MB_ICONWARNING);
-                }
-            }
+            show_pairing_from_app();
         }
         let mut message = MSG::default();
         while GetMessageW(&mut message, null_mut(), 0, 0) > 0 {
@@ -351,12 +381,15 @@ fn run(show_onboarding: bool) -> Result<(), String> {
 
 unsafe fn register_window_classes() -> Result<(), String> {
     let instance = GetModuleHandleW(null());
+    let app_icon = LoadIconW(instance, APP_ICON_RESOURCE_ID as *const u16);
     let tray_class_name = wide("CodexQuotaTrayWindow");
     let tray_class = WNDCLASSEXW {
         cbSize: size_of::<WNDCLASSEXW>() as u32,
         lpfnWndProc: Some(tray_window_proc),
         hInstance: instance,
         hCursor: LoadCursorW(null_mut(), IDC_ARROW),
+        hIcon: app_icon,
+        hIconSm: app_icon,
         lpszClassName: tray_class_name.as_ptr(),
         ..Default::default()
     };
@@ -370,6 +403,8 @@ unsafe fn register_window_classes() -> Result<(), String> {
         lpfnWndProc: Some(pairing_window_proc),
         hInstance: instance,
         hCursor: LoadCursorW(null_mut(), IDC_ARROW),
+        hIcon: app_icon,
+        hIconSm: app_icon,
         lpszClassName: pairing_class_name.as_ptr(),
         ..Default::default()
     };
@@ -383,6 +418,8 @@ unsafe fn register_window_classes() -> Result<(), String> {
         lpfnWndProc: Some(pairing_tutorial_window_proc),
         hInstance: instance,
         hCursor: LoadCursorW(null_mut(), IDC_ARROW),
+        hIcon: app_icon,
+        hIconSm: app_icon,
         lpszClassName: tutorial_class_name.as_ptr(),
         ..Default::default()
     };
@@ -396,6 +433,8 @@ unsafe fn register_window_classes() -> Result<(), String> {
         lpfnWndProc: Some(diagnostics_window_proc),
         hInstance: instance,
         hCursor: LoadCursorW(null_mut(), IDC_ARROW),
+        hIcon: app_icon,
+        hIconSm: app_icon,
         lpszClassName: diagnostics_class_name.as_ptr(),
         ..Default::default()
     };
@@ -571,7 +610,7 @@ unsafe fn show_tray_menu(window: HWND) {
             "刷新当前状态"
         },
     );
-    append_menu(menu, MF_STRING, MENU_PAIR as usize, "显示配对二维码…");
+    append_menu(menu, MF_STRING, MENU_PAIR as usize, "连接手机…");
     append_menu(menu, MF_STRING, MENU_DIAGNOSTICS as usize, "连接与诊断…");
     AppendMenuW(menu, MF_SEPARATOR, 0, null());
     append_menu(menu, MF_STRING, MENU_REVOKE as usize, "撤销手机配对");
@@ -611,18 +650,7 @@ unsafe fn show_tray_menu(window: HWND) {
     PostMessageW(window, WM_NULL, 0, 0);
     DestroyMenu(menu);
     match command {
-        MENU_PAIR => match APP
-            .get()
-            .ok_or_else(|| "应用尚未初始化".to_string())
-            .and_then(|app| app.pairing_presentation())
-        {
-            Ok(presentation) => {
-                if let Err(error) = show_pairing_window(presentation) {
-                    show_message("无法显示配对二维码", &error, MB_ICONWARNING);
-                }
-            }
-            Err(error) => show_message("无法开始配对", &error, MB_ICONWARNING),
-        },
+        MENU_PAIR => show_pairing_from_app(),
         MENU_REVOKE => {
             let confirmed = MessageBoxW(
                 window,
@@ -664,6 +692,13 @@ unsafe fn show_tray_menu(window: HWND) {
 }
 
 unsafe fn show_pairing_from_app() {
+    let class_name = wide("CodexQuotaPairingWindow");
+    let existing = FindWindowW(class_name.as_ptr(), null());
+    if pairing_open_action(!existing.is_null()) == PairingOpenAction::FocusExisting {
+        ShowWindow(existing, SW_RESTORE);
+        SetForegroundWindow(existing);
+        return;
+    }
     let result = APP
         .get()
         .ok_or_else(|| "应用尚未初始化".to_string())
@@ -718,16 +753,9 @@ unsafe fn show_diagnostics_window() {
 }
 
 unsafe fn show_pairing_window(presentation: PairingPresentation) -> Result<(), String> {
-    let code = QrCode::new(presentation.deep_link.as_bytes()).map_err(|error| error.to_string())?;
-    let width = code.width();
-    let modules = code
-        .to_colors()
-        .into_iter()
-        .map(|color| color == QrColor::Dark)
-        .collect();
-    let data = PairingWindowData { modules, width };
+    let data = pairing_window_data(presentation)?;
     let class_name = wide("CodexQuotaPairingWindow");
-    let title = wide("Codex额度 · 连接 Android 手机");
+    let title = wide("Codex额度 · 连接手机");
     let window = CreateWindowExW(
         WS_EX_APPWINDOW,
         class_name.as_ptr(),
@@ -755,6 +783,51 @@ unsafe fn show_pairing_window(presentation: PairingPresentation) -> Result<(), S
     SetForegroundWindow(window);
     UpdateWindow(window);
     Ok(())
+}
+
+fn pairing_window_data(presentation: PairingPresentation) -> Result<PairingWindowData, String> {
+    let discovery =
+        PairingDiscoveryAnnouncement::from_offer(&presentation.offer).map_err(str::to_string)?;
+    let security_code = discovery.security_code();
+    let manual_discovery_available = discovery.spawn_broadcast().is_ok();
+    let code = QrCode::new(presentation.deep_link.as_bytes()).map_err(|error| error.to_string())?;
+    let width = code.width();
+    let modules = code
+        .to_colors()
+        .into_iter()
+        .map(|color| color == QrColor::Dark)
+        .collect();
+    Ok(PairingWindowData {
+        modules,
+        width,
+        pairing_code: presentation.offer.code.clone(),
+        security_code,
+        manual_discovery_available,
+    })
+}
+
+unsafe fn refresh_pairing_window(window: HWND) {
+    let result = APP
+        .get()
+        .ok_or_else(|| "应用尚未初始化".to_string())
+        .and_then(|app| app.pairing_presentation())
+        .and_then(pairing_window_data);
+    match result {
+        Ok(data) => {
+            let updated = PAIRING_WINDOWS
+                .get_or_init(|| Mutex::new(HashMap::new()))
+                .lock()
+                .map(|mut windows| windows.insert(window as isize, data))
+                .is_ok();
+            if updated {
+                InvalidateRect(window, null(), 1);
+                UpdateWindow(window);
+            } else {
+                show_message("无法刷新配对码", "配对窗口状态不可用", MB_ICONWARNING);
+            }
+        }
+        Err(error) => show_message("无法刷新配对码", &error, MB_ICONWARNING),
+    }
 }
 
 unsafe fn show_pairing_tutorial_window(owner: HWND) {
@@ -858,8 +931,12 @@ unsafe extern "system" fn pairing_window_proc(
             GetClientRect(window, &mut client);
             let x = (lparam as u32 & 0xffff) as i32;
             let y = ((lparam as u32 >> 16) & 0xffff) as i32;
+            let refresh = pairing_refresh_button_rect(client);
             let button = pairing_tutorial_button_rect(client);
-            if x >= button.left && x <= button.right && y >= button.top && y <= button.bottom {
+            if x >= refresh.left && x <= refresh.right && y >= refresh.top && y <= refresh.bottom {
+                refresh_pairing_window(window);
+            } else if x >= button.left && x <= button.right && y >= button.top && y <= button.bottom
+            {
                 show_pairing_tutorial_window(window);
             }
             0
@@ -1742,13 +1819,72 @@ fn diagnostics_row_text_rect(panel: RECT, row: i32) -> RECT {
 }
 
 fn pairing_tutorial_button_rect(client: RECT) -> RECT {
-    let width = 112;
-    let height = 34;
-    RECT {
-        left: (client.right - width) / 2,
-        top: client.bottom - height - 18,
-        right: (client.right + width) / 2,
-        bottom: client.bottom - 18,
+    pairing_window_bottom_layout(client, 0).tutorial_button
+}
+
+fn pairing_refresh_button_rect(client: RECT) -> RECT {
+    pairing_window_bottom_layout(client, 0).refresh_button
+}
+
+fn pairing_window_bottom_layout(client: RECT, _qr_bottom: i32) -> PairingWindowBottomLayout {
+    let button_top = client.bottom - 50;
+    let button_bottom = client.bottom - 16;
+    let button_width = 114;
+    let button_gap = 12;
+    let actions_left = (client.right - (button_width * 2 + button_gap)) / 2;
+    let network_bottom = button_top - 8;
+    let network_top = network_bottom - 15;
+    let security_bottom = network_top - 4;
+    let security_top = security_bottom - 15;
+    let code_bottom = security_top - 4;
+    let code_top = code_bottom - 28;
+    let manual_bottom = code_top - 4;
+    let manual_top = manual_bottom - 18;
+    let app_bottom = manual_top - 4;
+    let app_top = app_bottom - 18;
+    PairingWindowBottomLayout {
+        app_guidance: RECT {
+            left: 0,
+            top: app_top,
+            right: client.right,
+            bottom: app_bottom,
+        },
+        manual_guidance: RECT {
+            left: 0,
+            top: manual_top,
+            right: client.right,
+            bottom: manual_bottom,
+        },
+        pairing_code: RECT {
+            left: 0,
+            top: code_top,
+            right: client.right,
+            bottom: code_bottom,
+        },
+        security_code: RECT {
+            left: 0,
+            top: security_top,
+            right: client.right,
+            bottom: security_bottom,
+        },
+        network_guidance: RECT {
+            left: 18,
+            top: network_top,
+            right: client.right - 18,
+            bottom: network_bottom,
+        },
+        refresh_button: RECT {
+            left: actions_left,
+            top: button_top,
+            right: actions_left + button_width,
+            bottom: button_bottom,
+        },
+        tutorial_button: RECT {
+            left: actions_left + button_width + button_gap,
+            top: button_top,
+            right: actions_left + button_width * 2 + button_gap,
+            bottom: button_bottom,
+        },
     }
 }
 
@@ -1787,12 +1923,32 @@ unsafe fn paint_pairing_window(window: HWND) {
     DeleteObject(background);
     SetBkMode(dc, TRANSPARENT as i32);
     SetTextColor(dc, UI_INK);
-    draw_text(dc, "扫码连接电脑", 0, 26, client.right, 58, 22, true);
+    draw_text(
+        dc,
+        "连接手机",
+        0,
+        27,
+        client.right,
+        55,
+        PAIRING_TITLE_SIZE,
+        true,
+    );
     SetTextColor(dc, UI_MUTED);
-    draw_text(dc, PAIRING_HOOK_GUIDANCE, 0, 64, client.right, 86, 13, true);
-    let qr_box_size = 286.min(client.right - 96).min(client.bottom - 235);
+    draw_text(
+        dc,
+        PAIRING_HOOK_GUIDANCE,
+        0,
+        61,
+        client.right,
+        79,
+        PAIRING_BODY_SIZE,
+        true,
+    );
+    let qr_box_size = PAIRING_QR_SIZE
+        .min(client.right - 96)
+        .min(client.bottom - 235);
     let qr_left = (client.right - qr_box_size) / 2;
-    let qr_top = 104;
+    let qr_top = PAIRING_QR_TOP;
     let outer = RECT {
         left: qr_left - 12,
         top: qr_top - 12,
@@ -1819,34 +1975,101 @@ unsafe fn paint_pairing_window(window: HWND) {
         }
     }
     DeleteObject(black);
-    SetTextColor(dc, UI_PRIMARY);
+    let bottom_layout = pairing_window_bottom_layout(client, outer.bottom);
+    SetTextColor(dc, UI_INK);
     draw_text(
         dc,
         PAIRING_APP_GUIDANCE,
-        0,
-        outer.bottom + 16,
-        client.right,
-        outer.bottom + 38,
-        13,
+        bottom_layout.app_guidance.left,
+        bottom_layout.app_guidance.top,
+        bottom_layout.app_guidance.right,
+        bottom_layout.app_guidance.bottom,
+        PAIRING_GUIDANCE_SIZE,
         true,
     );
     SetTextColor(dc, UI_MUTED);
     draw_text(
         dc,
         PAIRING_NETWORK_GUIDANCE,
-        18,
-        outer.bottom + 42,
-        client.right - 18,
-        outer.bottom + 62,
-        11,
+        bottom_layout.network_guidance.left,
+        bottom_layout.network_guidance.top,
+        bottom_layout.network_guidance.right,
+        bottom_layout.network_guidance.bottom,
+        PAIRING_SUPPORT_SIZE,
+        true,
+    );
+    SetTextColor(dc, UI_INK);
+    draw_text(
+        dc,
+        if data.manual_discovery_available {
+            "无法扫码？输入下方 6 位配对码"
+        } else {
+            "局域网发现不可用，请使用二维码"
+        },
+        bottom_layout.manual_guidance.left,
+        bottom_layout.manual_guidance.top,
+        bottom_layout.manual_guidance.right,
+        bottom_layout.manual_guidance.bottom,
+        PAIRING_BODY_SIZE,
+        true,
+    );
+    SetTextColor(dc, UI_PRIMARY);
+    draw_text(
+        dc,
+        if data.manual_discovery_available {
+            &data.pairing_code
+        } else {
+            "--"
+        },
+        bottom_layout.pairing_code.left,
+        bottom_layout.pairing_code.top,
+        bottom_layout.pairing_code.right,
+        bottom_layout.pairing_code.bottom,
+        PAIRING_CODE_SIZE,
+        true,
+    );
+    SetTextColor(dc, UI_MUTED);
+    draw_text(
+        dc,
+        &if data.manual_discovery_available {
+            format!("安全校验码 {} · 5 分钟内有效", data.security_code)
+        } else {
+            "关闭窗口后重试，或直接扫码".to_string()
+        },
+        bottom_layout.security_code.left,
+        bottom_layout.security_code.top,
+        bottom_layout.security_code.right,
+        bottom_layout.security_code.bottom,
+        PAIRING_SUPPORT_SIZE,
+        true,
+    );
+    let refresh_button = bottom_layout.refresh_button;
+    draw_anti_aliased_surface(
+        dc,
+        refresh_button,
+        UI_PRIMARY,
+        UI_PRIMARY,
+        UI_BACKGROUND,
+        refresh_button.bottom - refresh_button.top,
+    );
+    SetTextColor(dc, UI_SURFACE);
+    draw_text(
+        dc,
+        PAIRING_REFRESH_BUTTON_LABEL,
+        refresh_button.left,
+        refresh_button.top + 6,
+        refresh_button.right,
+        refresh_button.bottom - 4,
+        PAIRING_BODY_SIZE,
         true,
     );
     let tutorial_button = pairing_tutorial_button_rect(client);
-    draw_surface(
+    draw_anti_aliased_surface(
         dc,
         tutorial_button,
         UI_SURFACE,
         UI_BORDER,
+        UI_BACKGROUND,
         tutorial_button.bottom - tutorial_button.top,
     );
     SetTextColor(dc, UI_PRIMARY);
@@ -1857,7 +2080,7 @@ unsafe fn paint_pairing_window(window: HWND) {
         tutorial_button.top + 7,
         tutorial_button.right,
         tutorial_button.bottom - 5,
-        12,
+        PAIRING_BODY_SIZE,
         true,
     );
     EndPaint(window, &paint);
@@ -2048,6 +2271,65 @@ unsafe fn draw_surface(dc: HDC, rectangle: RECT, fill: u32, border: u32, radius:
     let brush = CreateSolidBrush(fill);
     draw_round_rect(dc, rectangle, brush, border, radius);
     DeleteObject(brush);
+}
+
+unsafe fn draw_anti_aliased_surface(
+    dc: HDC,
+    rectangle: RECT,
+    fill: u32,
+    border: u32,
+    background: u32,
+    radius: i32,
+) {
+    const SCALE: i32 = 4;
+    let width = rectangle.right - rectangle.left;
+    let height = rectangle.bottom - rectangle.top;
+    if width <= 0 || height <= 0 {
+        return;
+    }
+    let memory_dc = CreateCompatibleDC(dc);
+    let bitmap = CreateCompatibleBitmap(dc, width * SCALE, height * SCALE);
+    if memory_dc.is_null() || bitmap.is_null() {
+        if !memory_dc.is_null() {
+            DeleteDC(memory_dc);
+        }
+        if !bitmap.is_null() {
+            DeleteObject(bitmap);
+        }
+        draw_surface(dc, rectangle, fill, border, radius);
+        return;
+    }
+    let previous_bitmap = SelectObject(memory_dc, bitmap);
+    let scaled = RECT {
+        left: 0,
+        top: 0,
+        right: width * SCALE,
+        bottom: height * SCALE,
+    };
+    let background_brush = CreateSolidBrush(background);
+    FillRect(memory_dc, &scaled, background_brush);
+    DeleteObject(background_brush);
+    let fill_brush = CreateSolidBrush(fill);
+    draw_round_rect(memory_dc, scaled, fill_brush, border, radius * SCALE);
+    DeleteObject(fill_brush);
+    SetStretchBltMode(dc, HALFTONE);
+    SetBrushOrgEx(dc, rectangle.left, rectangle.top, null_mut());
+    StretchBlt(
+        dc,
+        rectangle.left,
+        rectangle.top,
+        width,
+        height,
+        memory_dc,
+        0,
+        0,
+        width * SCALE,
+        height * SCALE,
+        SRCCOPY,
+    );
+    SelectObject(memory_dc, previous_bitmap);
+    DeleteObject(bitmap);
+    DeleteDC(memory_dc);
 }
 
 unsafe fn draw_round_rect(dc: HDC, rectangle: RECT, brush: HBRUSH, border: u32, radius: i32) {
@@ -2615,7 +2897,7 @@ mod ui_contract_tests {
 
     #[test]
     fn lightweight_windows_surfaces_stay_compact() {
-        assert_eq!((PAIRING_WIDTH, PAIRING_HEIGHT), (460, 560));
+        assert_eq!((PAIRING_WIDTH, PAIRING_HEIGHT), (460, 620));
         assert_eq!((DIAGNOSTICS_WIDTH, DIAGNOSTICS_HEIGHT), (480, 340));
     }
 
@@ -2731,22 +3013,22 @@ mod ui_contract_tests {
     fn pairing_window_uses_android_card_curvature_and_product_guidance() {
         assert_eq!(PAIRING_SURFACE_RADIUS, 32);
         assert_eq!(
-            PAIRING_HOOK_GUIDANCE,
-            "使用手机端「Codex额度」App 扫描二维码"
+            (PAIRING_TITLE_SIZE, PAIRING_BODY_SIZE, PAIRING_SUPPORT_SIZE),
+            (20, 12, 10)
         );
-        assert_eq!(PAIRING_APP_GUIDANCE, "打开 App → 设置 → 扫码连接电脑");
-        assert_eq!(
-            PAIRING_NETWORK_GUIDANCE,
-            "确保手机和电脑在同一局域网·5分钟内有效"
-        );
+        assert_eq!((PAIRING_GUIDANCE_SIZE, PAIRING_CODE_SIZE), (13, 22));
+        assert_eq!((PAIRING_QR_SIZE, PAIRING_QR_TOP), (286, 96));
+        assert_eq!(PAIRING_HOOK_GUIDANCE, "使用手机端「Codex额度」App 扫码");
+        assert_eq!(PAIRING_APP_GUIDANCE, "打开 App → 设置 → 连接电脑");
+        assert_eq!(PAIRING_NETWORK_GUIDANCE, "确保手机和电脑连接同一局域网");
         assert_eq!(PAIRING_TUTORIAL_BUTTON_LABEL, "配对教学");
         assert_eq!(
             PAIRING_TUTORIAL_STEPS,
             [
                 "1. 在电脑托盘菜单中选择「安装/修复任务 Hook」",
                 "2. 在 ChatGPT 中打开「设置 → 钩子」，并信任全部钩子",
-                "3. 在手机端打开「Codex额度」App，进入「设置 → 扫码连接电脑」",
-                "4. 扫描电脑上的二维码完成配对",
+                "3. 在手机端打开「Codex额度」App，进入「设置 → 连接电脑」",
+                "4. 扫描二维码或输入 6 位配对码完成配对",
             ]
         );
         assert_eq!(
@@ -2768,6 +3050,31 @@ mod ui_contract_tests {
         assert!(button.right <= client.right - 24);
         assert!(button.top >= 0);
         assert!(button.bottom <= client.bottom - 16);
+    }
+
+    #[test]
+    fn pairing_window_reuses_the_current_offer_until_refresh_is_explicit() {
+        assert_eq!(pairing_open_action(true), PairingOpenAction::FocusExisting);
+        assert_eq!(pairing_open_action(false), PairingOpenAction::CreateOffer);
+    }
+
+    #[test]
+    fn pairing_window_bottom_content_does_not_overlap_actions() {
+        let client = RECT {
+            left: 0,
+            top: 0,
+            right: 446,
+            bottom: 581,
+        };
+        let layout = pairing_window_bottom_layout(client, 402);
+        assert!(402 < layout.app_guidance.top);
+        assert!(layout.app_guidance.bottom < layout.manual_guidance.top);
+        assert!(layout.manual_guidance.bottom < layout.pairing_code.top);
+        assert!(layout.pairing_code.bottom < layout.security_code.top);
+        assert!(layout.security_code.bottom < layout.network_guidance.top);
+        assert!(layout.network_guidance.bottom < layout.refresh_button.top);
+        assert_eq!(layout.refresh_button.top, layout.tutorial_button.top);
+        assert!(layout.refresh_button.right < layout.tutorial_button.left);
     }
 
     #[test]

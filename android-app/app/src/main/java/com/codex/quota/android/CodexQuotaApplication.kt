@@ -6,6 +6,7 @@ import com.codex.quota.android.notifications.NotificationChannels
 import com.codex.quota.android.notifications.TaskAlertCoordinator
 import com.codex.quota.android.notifications.TaskNotificationDispatcher
 import com.codex.quota.android.protocol.PairingDeepLinkContract
+import com.codex.quota.android.protocol.PairingOffer
 import com.codex.quota.android.runtime.PairingClient
 import com.codex.quota.android.runtime.BandConnectionCheckResult
 import com.codex.quota.android.runtime.RuntimeStateRepository
@@ -57,14 +58,15 @@ class CodexQuotaApplication : Application() {
     taskAlerts.updateSettings(settings)
   }
 
-  fun setAndroidForeground(foreground: Boolean) {
-    taskAlerts.setAndroidForeground(foreground)
+  fun handlePairingLink(uri: Uri) {
+    runCatching { PairingDeepLinkContract.decode(uri) }
+      .onSuccess(::handlePairingOffer)
+      .onFailure { runtimeRepository.markTransportDisconnected() }
   }
 
-  fun handlePairingLink(uri: Uri) {
+  fun handlePairingOffer(offer: PairingOffer) {
     applicationScope.launch {
       runCatching {
-          val offer = PairingDeepLinkContract.decode(uri)
           val result = PairingClient().pair(offer, connectionStore.clientInstanceId())
           credentialStore.save(result.credentials)
           connectionStore.saveSyncEndpoint(result.syncEndpoint)

@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://local.codex-quota.invalid/contract/pairing-discovery-v1.schema.json",
+  "title": "Codex Quota Local Pairing Discovery v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "type",
+    "computerFingerprint",
+    "endpoints",
+    "expiresAtMs"
+  ],
+  "properties": {
+    "protocolVersion": { "const": 1 },
+    "type": { "const": "pairing_discovery" },
+    "computerFingerprint": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "endpoints": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128,
+        "pattern": "^wss://[0-9.]+:[0-9]{1,5}/pair$"
+      }
+    },
+    "expiresAtMs": { "type": "integer", "minimum": 0 }
+  }
+}

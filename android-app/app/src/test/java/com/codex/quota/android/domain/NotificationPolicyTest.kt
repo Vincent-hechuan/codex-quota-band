@@ -10,7 +10,6 @@ class NotificationPolicyTest {
     val background =
       AlertContext(
         chatGptFocused = false,
-        androidForeground = false,
         reconnect = false,
       )
 
@@ -18,7 +17,7 @@ class NotificationPolicyTest {
       AlertDelivery(
         phone = true,
         band = true,
-        phoneUrgency = PhoneUrgency.Silent,
+        phoneUrgency = PhoneUrgency.Vibrate,
         bandBehavior = BandAlertBehavior.SystemControlled,
       ),
       policy.plan(TaskState.WaitingForReview, background),

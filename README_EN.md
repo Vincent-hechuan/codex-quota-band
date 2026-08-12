@@ -8,13 +8,13 @@ View your **Codex five-hour quota, weekly quota, reset times, and available rese
   <img src="assets/icon.svg" alt="Codex Quota icon" width="96">
 </p>
 
-Current version: **0.6.2**
+Current version: **0.6.3**
 
-Version `0.6.2` unifies status colors and task summaries, fixes mixed-language title clipping on the band, and ships a self-contained Windows installer.
+Version `0.6.3` improves phone pairing, notification controls, and Windows background efficiency while keeping the three-device local sync model.
 
 [View changelog](CHANGELOG.md)
 
-## 0.6.2 layout previews
+## 0.6.3 layout previews
 
 <table>
   <tr>
@@ -55,9 +55,9 @@ Download all three files from the same version on the [Releases](https://github.
 
 | Install on | File |
 | --- | --- |
-| Windows computer | `Codex-Quota-Setup-0.6.2.exe` |
-| Android phone | `CodexQuota-0.6.2.apk` |
-| Xiaomi Smart Band 10 (AstroBox only for sideloading) | `com.codex.quota.android.release.0.6.2.rpk` |
+| Windows computer | `Codex-Quota-Setup-0.6.3.exe` |
+| Android phone | `CodexQuota-0.6.3.apk` |
+| Xiaomi Smart Band 10 (AstroBox only for sideloading) | `com.codex.quota.android.release.0.6.3.rpk` |
 
 All three components should have the same version number.
 
@@ -65,32 +65,33 @@ All three components should have the same version number.
 
 ### 1. Install the Windows app
 
-1. Run `Codex-Quota-Setup-0.6.2.exe`.
+1. Run `Codex-Quota-Setup-0.6.3.exe`.
 2. After installation, the app stays in the Windows notification area. If it is hidden, click the `^` icon in the taskbar.
 3. The current test build is not commercially code-signed, so Windows may display an “Unknown publisher” warning. Download only from this repository and verify the SHA-256 value shown on the Release page.
 
 ### 2. Install the Android app and band RPK
 
 1. Open AstroBox and enter the page for the connected Xiaomi Smart Band 10.
-2. Import `com.codex.quota.android.release.0.6.2.rpk` and wait for the upgrade animation.
-3. Install `CodexQuota-0.6.2.apk` on the Android phone.
+2. Import `com.codex.quota.android.release.0.6.3.rpk` and wait for the upgrade animation.
+3. Install `CodexQuota-0.6.3.apk` on the Android phone.
 4. Exit AstroBox after the upgrade and keep Xiaomi Fitness connected to the band.
 
 ## First pairing
 
 1. Make sure the phone and computer are on the same Wi-Fi or trusted local network.
-2. Right-click the Codex Quota icon in the Windows notification area and select 「显示配对信息…」 (Show pairing information).
-3. Scan the QR code on the computer with the phone's system camera.
-4. Open the link in CodexQuota and complete pairing.
-5. Open 「Codex 额度」 on the band. Quota data should appear within a few seconds.
+2. Right-click the Codex Quota icon in the Windows notification area and select 「连接手机…」 (Connect phone).
+3. On the phone, open CodexQuota → Settings → Connect computer.
+4. Scan with the camera built into CodexQuota, or enter the six-digit pairing code if scanning is unavailable.
+5. For manual pairing, confirm that the `XXXX-XXXX` security code matches on both devices before connecting.
+6. Open 「Codex额度」 on the band. Quota data should appear within a few seconds.
 
-The QR code and six-digit pairing code expire quickly. You normally do not need to type the computer address. Use the advanced manual information in the Windows pairing window only if QR pairing fails.
+The QR code and six-digit pairing code expire after five minutes and become invalid immediately after one successful use. Manual pairing discovers the computer on the same local network, so users do not enter an IP address.
 
 ## Troubleshooting
 
 ### Scanning does not open CodexQuota
 
-Use the Android system camera to scan the Windows QR code and choose CodexQuota for the pairing link. AstroBox is not used for pairing.
+Use the scanner built into CodexQuota. It does not depend on the phone vendor's system camera. AstroBox is not used for pairing.
 
 ### The plugin cannot find Windows
 

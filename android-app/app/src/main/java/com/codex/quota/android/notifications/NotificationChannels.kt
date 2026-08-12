@@ -31,9 +31,9 @@ object NotificationChannels {
       NotificationChannelSpec(
         id = WAITING_FOR_REVIEW_CHANNEL_ID,
         name = "等待查看",
-        description = "ChatGPT Windows 任务停止并等待查看时静默提醒",
+        description = "ChatGPT Windows 任务停止并等待查看时振动提醒",
         importance = ChannelImportance.High,
-        vibrate = false,
+        vibrate = true,
       ),
     )
 
@@ -57,13 +57,15 @@ object NotificationChannels {
     LEGACY_CHANNEL_IDS.forEach(manager::deleteNotificationChannel)
   }
 
-  const val NEEDS_AUTHORIZATION_CHANNEL_ID = "needs-authorization-v2"
-  const val WAITING_FOR_REVIEW_CHANNEL_ID = "waiting-for-review-v2"
+  const val NEEDS_AUTHORIZATION_CHANNEL_ID = "needs-authorization-v4"
+  const val WAITING_FOR_REVIEW_CHANNEL_ID = "waiting-for-review-v4"
 
   private val LEGACY_CHANNEL_IDS =
     listOf(
       "needs-authorization",
       "waiting-for-review",
+      "needs-authorization-v2",
+      "waiting-for-review-v2",
       "needs-authorization-v3",
       "waiting-for-review-v3",
     )

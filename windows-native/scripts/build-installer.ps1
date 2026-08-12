@@ -33,6 +33,10 @@ try {
 
     $binary = Join-Path $targetRoot "release\codex_quota_windows.exe"
     if (-not (Test-Path -LiteralPath $binary)) { throw "Missing release binary: $binary" }
+    & (Join-Path $PSScriptRoot "test-executable-icon.ps1") -Executable $binary
+    if ($LASTEXITCODE -ne 0) {
+        throw "Executable icon verification failed with exit code $LASTEXITCODE"
+    }
 
     $bundleRoot = [IO.Path]::GetFullPath((Join-Path $targetRoot "installer-bundle"))
     $resolvedTargetRoot = [IO.Path]::GetFullPath($targetRoot).TrimEnd([IO.Path]::DirectorySeparatorChar)

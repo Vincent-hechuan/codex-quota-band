@@ -8,6 +8,18 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class SyncStreamSessionTest {
+  @Test
+  fun newlyNegotiatedConnectionRequestsAnImmediateQuotaRefresh() {
+    val connectionIds = mutableListOf<String>()
+    val session = SyncStreamSession(RuntimeStateRepository(), onNegotiated = { connectionIds += it })
+
+    session.ingest(serverHello("connection_0123456789"))
+    session.ingest(serverHello("connection_0123456789"))
+    session.ingest(serverHello("connection_9876543210"))
+
+    assertEquals(listOf("connection_0123456789", "connection_9876543210"), connectionIds)
+  }
+
   private val nowMs = Instant.parse("2026-07-24T08:00:00Z").toEpochMilli()
 
   @Test

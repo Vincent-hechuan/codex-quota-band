@@ -3,6 +3,8 @@ RequestExecutionLevel user
 
 !include "MUI2.nsh"
 !define MUI_ABORTWARNING
+!define MUI_ICON "..\assets\app-icon.ico"
+!define MUI_UNICON "..\assets\app-icon.ico"
 !define MUI_FINISHPAGE_RUN "$INSTDIR\CodexQuota.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "完成后启动 Codex额度并打开新手引导"
 !define MUI_FINISHPAGE_RUN_FUNCTION "LaunchCodexQuota"

@@ -42,6 +42,9 @@ cargo build --release --bin codex_quota_windows
 `scripts\build-installer.ps1` 生成的 `Codex-Quota-Setup-*.exe` 才是可安装包。测试时可设置独立
 `CARGO_TARGET_DIR`，将临时 EXE 与正在运行的托盘程序隔离。
 
+Windows 构建使用 LLVM-MinGW 工具链中的 `windres` 把 `assets/app-icon.ico` 写入主程序；安装包脚本会调用
+`scripts/test-executable-icon.ps1` 检查 `ICON` 与 `GROUP_ICON` 资源。图标检查和最小系统 PATH 独立启动检查都通过后，才可把安装包交给普通用户。
+
 托盘 EXE 正在运行时，使用独立临时目录执行测试，避免文件锁产生假失败：
 
 ```powershell
@@ -58,6 +61,17 @@ $env:ANDROID_HOME = Join-Path $env:LOCALAPPDATA 'Android\Sdk'
 $env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
 ..\spikes\android-background-probe\gradlew.bat -p . :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --console=plain
 ```
+
+扫码依赖由正式版压缩器处理，Debug 构建不能覆盖这条发布风险。手机通过 USB 连接并允许安装测试包后，额外运行正式版扫码回归：
+
+```powershell
+..\spikes\android-background-probe\gradlew.bat -p . -PcodexQuotaInstrumentationBuildType=release :app:connectedAndroidTest --console=plain
+```
+
+该检查会安装 release APK 和仅用于测试的 APK，打开“连接电脑”并进入扫码页；如果正式版反射入口再次被压缩掉、页面崩溃或无法打开，构建直接失败。
+
+部分国产系统即使已经开启 USB 安装，ADB 的流式安装仍可能返回 `INSTALL_FAILED_USER_RESTRICTED`。确认设备授权无误后，应改用
+`adb install --no-streaming -r app-release.apk` 覆盖安装；不要让用户卸载应用或清除配对数据。
 
 如需在没有真实 5 小时上游数据时检查 Android 排版，可在本地构建命令中临时加入
 `-PcodexQuotaDemoFiveHour=true`。该参数只把手机界面显示为 68%，不会写入额度缓存或下发手环；
@@ -87,22 +101,26 @@ npm run build:release
 | 变更范围 | 自动验证 | 必要的真机确认 |
 | --- | --- | --- |
 | Windows Hook、任务、额度 | `cargo test --workspace` | 实际 Hook、任务标题、状态归并 |
-| WSS、配对、安全 | Windows 测试 + Android 协议测试 | 二维码配对、重连和局域网变化 |
+| WSS、配对、安全 | Windows 测试 + Android 协议测试 + release 真机扫码回归 | App 内置扫码、6 位配对码、安全校验码、重连和局域网变化 |
 | Android UI/任务板 | Android 单测、lint、assemble | 三页布局、竖向滚动、移除二次确认 |
 | 通知 | 通知/策略单测 | ChatGPT 失焦、后台/锁屏、通知栏和手环震动 |
 | Wearable/RPK | Android 构建 + RPK 构建测试 | 小米运动健康连接保持、手环页面可读 |
 | 安装器 | 构建脚本 + 安装器 smoke test | 当前用户安装、启动和卸载 |
 
-自动测试不能替代用户验收。用户已于 2026-07-29 确认当前 Windows、Android 与手环候选均通过验收；
-后续新增或改动的功能仍必须重新说明其真机验证范围。
+自动测试不能替代用户验收。`0.6.2` 已完成 Windows、安卓手机和小米手环 10 的自动验证与真机验收；后续新增或改动的功能仍必须重新说明其真机验证范围。
 
 ## 交付边界
 
-- 当前 `0.6.2` 为本地候选；发布附件与 SHA-256 以 `docs/build-verification.md` 为准。
+- 当前正式版本为 `0.6.2`；发布附件与 SHA-256 以 `docs/build-verification.md` 为准。新候选不得覆盖已发布版本的验收结论。
 - Windows、Android APK、手环 RPK 的产品版本必须一致；协议版本单独维护在 `contract/`。
 - 手环 UI 修改必须先给用户看 `212×520` 预览，确认后才改 RPK 源码。
-- `0.6.1` 的手机到手环断线重连修复已通过真机验证；`0.6.2` 新增改动仍需重新验收。发布流程展示版本、改动、测试、产物和 SHA-256。
+- `0.6.1` 的手机到手环断线重连修复和 `0.6.2` 的新增改动均已通过真机验证。后续发布流程展示版本、改动、测试、产物和 SHA-256。
 - Debug APK/RPK 仅用于开发和真机验证；正式产物应使用固定发布签名，私钥不得进入仓库。
+
+## 其他手环型号的测试
+
+- 未经对应型号真机验证的手环只能写“实验性适配”或“模拟器预览”。先完成模拟器尺寸/形状检查，再验证实际安装、同步、页面可读性和通知。
+- 适配记录只接受设备型号、系统/应用版本、RPK 版本、可复现步骤、可见状态和经过裁剪的截图；不得保存设备 ID、蓝牙地址、账号信息、配对材料、任务内容或完整日志。
 
 ## 文档职责
 
@@ -112,3 +130,4 @@ npm run build:release
 - `docs/build-verification.md`：实际构建、测试和产物证据。
 - `docs/device-acceptance.md`：公开的设备验收结论。
 - `CHANGELOG.md`：用户可见的已发布变化。
+- `CONTRIBUTING.md`：外部测试者和代码贡献者的反馈范围与隐私要求。

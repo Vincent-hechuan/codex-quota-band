@@ -77,17 +77,14 @@ class TaskAlertCoordinatorTest {
   }
 
   @Test
-  fun aSuppressedTransitionIsNotReplayedLater() {
+  fun anAllowedTransitionIsDeliveredWithoutASeparatePhoneForegroundGate() {
     val alerts = mutableListOf<SyncedTask>()
     val coordinator = TaskAlertCoordinator(phoneDispatcher = alerts::add, bandDispatcher = {})
     coordinator.ingest(snapshot(TaskState.Running), reconnect = true)
-    coordinator.setAndroidForeground(true)
 
     coordinator.ingest(snapshot(TaskState.WaitingForReview), reconnect = false)
-    coordinator.setAndroidForeground(false)
-    coordinator.ingest(snapshot(TaskState.WaitingForReview), reconnect = false)
 
-    assertEquals(emptyList<SyncedTask>(), alerts)
+    assertEquals(listOf("手机Codex额度开发"), alerts.map(SyncedTask::title))
   }
 
   @Test
