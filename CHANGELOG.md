@@ -8,7 +8,7 @@ This file records user-visible changes in each public version. Release dates fol
 >
 > Before `0.3.0`, Windows, AstroBox, and band RPK versions were not always synchronized. Early entries identify the affected component.
 
-## [未发布 / Unreleased]
+## [0.6.3] - 2026-08-13
 
 ### 新增 / Added
 
@@ -17,7 +17,7 @@ This file records user-visible changes in each public version. Release dates fol
 
 ### 改进 / Changed
 
-- 安卓“需要授权”和“等待查看”通知默认均振动但不播放声音；手机 App 自身前后台不再额外覆盖“从不 / 失焦 / 始终”的通知时机设置。
+- 安卓“需要授权”和“等待查看”使用无声、请求振动的独立通知通道；实际振动和悬浮方式由手机系统通知设置决定。手机 App 自身前后台不再额外覆盖“从不 / 失焦 / 始终”的通知时机设置。
 - 安卓设置页的提醒分组精简为通知时机、手机通知、手环通知和系统通知设置；通知时机副标题随当前选项变化，分类级调整统一交给系统设置。
 - 手机连接页改用与首页、设置页一致的背景、卡片、字体、间距和线性图标，扫码与手动配对不再使用独立的临时视觉样式。
 - 手机连接页补充 Windows 托盘入口引导，帮助首次使用者找到“连接手机”。
@@ -33,6 +33,12 @@ This file records user-visible changes in each public version. Release dates fol
 - 修复扫码页退出时相机初始化仍可能继续执行的问题，并在扫码组件不可用时安全降级到手动配对提示。
 - 配对完成并建立加密同步连接后立即请求当前额度确认，减少首页从“缓存”切换为“已同步”的等待。
 - 修复 Windows 配对窗口底部说明、有效期和按钮文字叠压，以及重复点击托盘入口产生多个窗口并暗中作废旧配对码的问题。
+
+### 验证 / Validation
+
+- 三端产品版本统一为 `0.6.3`；安卓手机和手环内部安装序号均为 `605`。
+- Windows、安卓手机和小米手环 10 已完成自动验证、覆盖安装和三端真机联动验收。
+- Windows 安装包已通过最小系统 PATH 独立启动与 PE 导入表检查，普通用户不需要另行寻找 DLL 或安装开发工具。
 
 ## [0.6.2] - 2026-08-04
 
