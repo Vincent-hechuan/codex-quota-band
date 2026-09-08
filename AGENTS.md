@@ -1,5 +1,17 @@
 # CodexQuota 项目 Agent 规范
 
+## 对话标题
+
+首次收到明确需求后，使用可用的任务改名能力，将标题修改为“[标签] 内容摘要”。
+
+标签从下方列表中选择一个；内容摘要应概括当前主要任务，标题不超过 18 个汉字。
+
+当用户要求总结当前对话、重新打标签或修改标题时，重新阅读当前对话，根据现阶段的主要内容再次修改标题。允许更换原标签和内容摘要。
+
+只修改标题，不解释改名过程。
+
+可用标签：[需求] [开发] [UI] [故障] [测试] [发布] [文档] [其他]
+
 本文件是给未来 AI Agent 的工作入口。开始任何修改前先读本文件；需要了解产品取舍时再读
 `CONTEXT.md` 和 `docs/current-status.md`，需要了解实现细节时读 `docs/architecture.md`，需要执行构建或验收时读
 `docs/development-guide.md`、`docs/build-verification.md` 和 `docs/device-acceptance.md`。
@@ -10,7 +22,7 @@ CodexQuota 是一个 Android + Windows + 小米手环 10 的本地额度和任�
 
 `ChatGPT Windows Hook → Windows 原生托盘程序 → 局域网加密同步 → Android Codex额度 → 小米运动健康/Wearable SDK → 手环 RPK`
 
-- 当前产品版本：`0.6.4`；Android 与手环内部安装序号均为 `606`，用于在不丢失本地数据的情况下覆盖此前版本。
+- 当前本地候选版本：`0.6.5`；Android 与手环内部安装序号均为 `607`，用于在不丢失本地数据的情况下覆盖此前版本。最近正式发布版本为 `0.6.4`。
 - 三端当前验收状态、临时版本差异和未决冲突以 `docs/current-status.md` 为唯一摘要；不要从单端
   构建记录推断三端已经一致。
 - 新架构只面向 Android；不为 iPhone 增加兼容层，也不把旧 AstroBox 桥接重新放回日常链路。

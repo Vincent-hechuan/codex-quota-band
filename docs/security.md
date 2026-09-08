@@ -7,7 +7,7 @@
 地址，不能建立信任。具体决策见 `docs/adr-003-encrypted-lan-pairing.md` 和
 `docs/adr-004-tls-sync-stream.md`。
 
-加密同步流只允许额度 Snapshot v1 与任务 Task Sync v1 白名单字段。连接标识和连接内单调
+加密同步流只允许协商后的额度 Snapshot v1/v2/v3 与任务 Task Sync v1 白名单字段。连接标识和连接内单调
 序列用于拒绝旧连接、重放与乱序消息；协议不兼容时停止同步，不得回退到明文端点。
 当前已完成协议、两端严格解析/序列化、Android 会话顺序保护、Windows TLS 1.3 WebSocket
 服务和 Android 自动重连客户端。2026-07-24 已用 Android 真机完成一次性配对与真实 WSS
@@ -25,7 +25,7 @@ RPK，不保存 Android 配对令牌，也不参与日常消息转发。手环�
 
 ## 数据最小化
 
-跨设备载荷只允许协商的 Snapshot 白名单字段：协议版本、生成时间、额度窗口、Full reset 数量、发卡/到期时间和链路状态。v1 不含发卡时间；仅当 Android 明确协商 quota v2 时，Windows 才发送不含卡片 ID、标题和描述的 `grantedAt`/`expiresAt`。解析器与手环各执行一次白名单裁剪。
+跨设备载荷只允许协商的 Snapshot 白名单字段：协议版本、生成时间、额度窗口、Full reset 数量、发卡/到期时间和链路状态。v1 不含发卡时间；v2 增加不含卡片 ID、标题和描述的 `grantedAt`/`expiresAt`；v3 再增加不含错误详情或凭据的上游新鲜度。解析器与手环各执行一次白名单裁剪。
 
 严禁进入载荷或日志的数据包括：对话、提示词、模型输出、项目名称/路径/文件、终端输出、Codex 完整会话、ChatGPT Cookie、访问令牌、刷新令牌和账号资料。
 

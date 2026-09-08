@@ -8,6 +8,22 @@ This file records user-visible changes in each public version. Release dates fol
 >
 > Before `0.3.0`, Windows, AstroBox, and band RPK versions were not always synchronized. Early entries identify the affected component.
 
+## [0.6.5] - 未发布
+
+### 修复 / Fixed
+
+- 手环页面退出或重开时停止旧定时器、请求和异步回调，避免旧页面回调触发偶发启动崩溃。
+- 手环通信保持原有请求、接收和缓存协议；D2 真机连续打开退出 24 次未出现整机重启。
+
+### 改进 / Changed
+
+- Windows、安卓手机和小米手环统一使用显示名称「Codex额度」。
+- 统一本地交付文件名：`CodexQuota-Setup-0.6.5.exe`、`CodexQuota-0.6.5.apk`、`CodexQuota-0.6.5.rpk`。
+
+### 状态 / Status
+
+- 本地候选版本，尚未提交、推送或发布 GitHub Release。
+
 ## [0.6.4] - 2026-08-13
 
 ### 修复 / Fixed

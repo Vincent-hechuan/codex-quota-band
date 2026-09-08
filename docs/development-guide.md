@@ -1,6 +1,6 @@
 # CodexQuota 开发与交付指南
 
-本文是 `0.6.2` 的日常开发入口。产品取舍以根目录 `CONTEXT.md` 为准，Agent 工作规则以 `AGENTS.md` 为准，代码分层见 `docs/architecture.md`。
+本文是 `0.6.5` 本地候选的日常开发入口。产品取舍以根目录 `CONTEXT.md` 为准，Agent 工作规则以 `AGENTS.md` 为准，代码分层见 `docs/architecture.md`。
 
 本指南覆盖 Windows、Android 与手环 RPK 三端。开始新的主任务前，先阅读
 `docs/current-status.md`，其中列出临时版本差异和必须先由用户确认的跨端冲突。
@@ -39,7 +39,7 @@ cargo build --release --bin codex_quota_windows
 ```
 
 `cargo build --release` 生成的是直接运行的候选 EXE，不会安装、更不会替换当前用户已安装程序；只有
-`scripts\build-installer.ps1` 生成的 `Codex-Quota-Setup-*.exe` 才是可安装包。测试时可设置独立
+`scripts\build-installer.ps1` 生成的 `CodexQuota-Setup-*.exe` 才是可安装包。测试时可设置独立
 `CARGO_TARGET_DIR`，将临时 EXE 与正在运行的托盘程序隔离。
 
 Windows 构建使用 LLVM-MinGW 工具链中的 `windres` 把 `assets/app-icon.ico` 写入主程序；安装包脚本会调用
@@ -107,14 +107,14 @@ npm run build:release
 | Wearable/RPK | Android 构建 + RPK 构建测试 | 小米运动健康连接保持、手环页面可读 |
 | 安装器 | 构建脚本 + 安装器 smoke test | 当前用户安装、启动和卸载 |
 
-自动测试不能替代用户验收。`0.6.2` 已完成 Windows、安卓手机和小米手环 10 的自动验证与真机验收；后续新增或改动的功能仍必须重新说明其真机验证范围。
+自动测试不能替代用户验收。`0.6.5` 仍需完成 Windows、安卓手机和小米手环 10 的真机验收；后续新增或改动的功能仍必须重新说明其真机验证范围。
 
 ## 交付边界
 
-- 当前正式版本为 `0.6.2`；发布附件与 SHA-256 以 `docs/build-verification.md` 为准。新候选不得覆盖已发布版本的验收结论。
+- 当前本地候选版本为 `0.6.5`，最近正式版本为 `0.6.4`；发布附件与 SHA-256 以 `docs/build-verification.md` 为准。新候选不得覆盖已发布版本的验收结论。
 - Windows、Android APK、手环 RPK 的产品版本必须一致；协议版本单独维护在 `contract/`。
 - 手环 UI 修改必须先给用户看 `212×520` 预览，确认后才改 RPK 源码。
-- `0.6.1` 的手机到手环断线重连修复和 `0.6.2` 的新增改动均已通过真机验证。后续发布流程展示版本、改动、测试、产物和 SHA-256。
+- `0.6.4` 的正式发布包已经通过自动验证和三端联动验收。后续发布流程展示版本、改动、测试、产物和 SHA-256。
 - Debug APK/RPK 仅用于开发和真机验证；正式产物应使用固定发布签名，私钥不得进入仓库。
 
 ## 其他手环型号的测试

@@ -9,7 +9,7 @@ if (-not $Installer) {
     $cargoTomlText = Get-Content -Raw -LiteralPath $cargoToml
     $match = [regex]::Match($cargoTomlText, '(?m)^version\s*=\s*"([^"]+)"')
     if (-not $match.Success) { throw "Could not read version from $cargoToml" }
-    $Installer = Join-Path $projectRoot "dist\Codex-Quota-Setup-$($match.Groups[1].Value).exe"
+    $Installer = Join-Path $projectRoot "dist\CodexQuota-Setup-$($match.Groups[1].Value).exe"
 }
 $installerPath = (Resolve-Path -LiteralPath $Installer).Path
 $testRoot = Join-Path $env:LOCALAPPDATA "Temp\codex-quota-installer-smoke"

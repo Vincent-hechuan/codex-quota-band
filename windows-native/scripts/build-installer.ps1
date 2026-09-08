@@ -60,7 +60,7 @@ try {
 
     $dist = Join-Path $projectRoot "dist"
     New-Item -ItemType Directory -Force -Path $dist | Out-Null
-    $output = Join-Path $dist "Codex-Quota-Setup-$Version.exe"
+    $output = Join-Path $dist "CodexQuota-Setup-$Version.exe"
     $versionMatch = [regex]::Match($Version, '^(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?$')
     if (-not $versionMatch.Success) {
         throw "Installer version must use major.minor.patch or a SemVer prerelease suffix: $Version"

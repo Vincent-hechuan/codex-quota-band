@@ -1,15 +1,15 @@
 <p align="right"><a href="README_EN.md">English</a></p>
 
-# 小米手环 10 Codex 额度
+# 小米手环 10 Codex额度
 
 在电脑、安卓手机和小米手环 10 上查看 **Codex 5 小时额度、周额度、重置时间和当前任务状态**。
 
 <p align="center">
-  <img src="assets/icon.svg" alt="Codex 额度图标" width="96">
+  <img src="assets/icon.svg" alt="Codex额度图标" width="96">
 </p>
 
 <p align="center">
-  <strong>当前版本：0.6.4</strong>
+  <strong>当前版本：0.6.5</strong>
 </p>
 
 ## 它能做什么
@@ -45,13 +45,13 @@
 
 ## 下载
 
-请从 [GitHub Releases](https://github.com/Vincent-hechuan/codex-quota-band/releases) 下载同一版本的三个文件。以下为 `0.6.4`：
+请从 [GitHub Releases](https://github.com/Vincent-hechuan/codex-quota-band/releases) 下载同一版本的三个文件。以下为 `0.6.5`：
 
 | 安装位置 | 文件 |
 | --- | --- |
-| Windows 电脑 | `Codex-Quota-Setup-0.6.4.exe` |
-| 安卓手机 | `CodexQuota-0.6.4.apk` |
-| 小米手环 10 | `com.codex.quota.android.release.0.6.4.rpk` |
+| Windows 电脑 | `CodexQuota-Setup-0.6.5.exe` |
+| 安卓手机 | `CodexQuota-0.6.5.apk` |
+| 小米手环 10 | `CodexQuota-0.6.5.rpk` |
 
 三个文件的版本号必须一致。不要从不明网站下载安装包。
 
@@ -59,7 +59,7 @@
 
 ### 第一步：安装 Windows 程序
 
-1. 双击 `Codex-Quota-Setup-0.6.4.exe`。
+1. 双击 `CodexQuota-Setup-0.6.5.exe`。
 2. 安装完成后，Codex额度会出现在任务栏右下角的通知区域；如果没有看到，请点击 `^`。
 3. 安装完成页会默认启动程序并显示配对二维码和 6 位配对码。
 4. 重启 ChatGPT，在「ChatGPT → 设置 → 钩子 → 信任全部钩子」中确认以下四项已开启：
@@ -67,7 +67,7 @@
 
 ### 第二步：安装安卓应用
 
-1. 在手机上安装 `CodexQuota-0.6.4.apk`。
+1. 在手机上安装 `CodexQuota-0.6.5.apk`。
 2. 打开「小米运动健康」，确认手环仍然在线。
 3. 打开手机上的「Codex额度」。
 4. 建议在手机系统中为 Codex额度开启：
@@ -96,7 +96,7 @@ AstroBox 只在安装或升级手环应用时临时使用，不参与日常同�
 1. 临时打开 [AstroBox](https://astrobox.online/downloads/)。
 2. 进入已连接的小米手环 10 设备页面。
 3. 打开「快应用数量」右上角的设置。
-4. 点击 `+`，导入 `com.codex.quota.android.release.0.6.4.rpk`。
+4. 点击 `+`，导入 `CodexQuota-0.6.5.rpk`。
 5. 等待安装动画结束。
 6. 安装完成后退出 AstroBox，重新确认「小米运动健康」仍显示手环已连接。
 7. 在手机「Codex额度 → 设置」中点击「检查手环连接」，按系统提示授权。
@@ -141,7 +141,6 @@ AstroBox 可以退出。
 - 确认手机和电脑在同一个局域网；两端都能上网不代表在同一个局域网。
 - 不要使用访客 Wi-Fi、公共 Wi-Fi 或启用了设备隔离的网络。
 - 首次启动时，允许 Codex额度通过 Windows 防火墙的专用网络。
-- 如果启用了 VPN 或代理，让手机访问电脑私网地址时绕过 VPN。
 - 在 Windows 通知区域打开「连接与诊断…」查看具体状态。
 
 ### 手机锁屏后显示缓存

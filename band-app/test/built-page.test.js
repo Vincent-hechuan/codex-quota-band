@@ -10,6 +10,133 @@ function createViewModel(component) {
   return viewModel;
 }
 
+async function withLifecyclePage(t, callback) {
+  const reads = [], ready = [], sends = [], writes = [];
+  const timers = new Map();
+  let timerId = 0;
+  for (const name of ["setTimeout", "setInterval"]) {
+    t.mock.method(globalThis, name, (fn) => { timers.set(++timerId, fn); return timerId; });
+  }
+  for (const name of ["clearTimeout", "clearInterval"]) {
+    t.mock.method(globalThis, name, (id) => timers.delete(id));
+  }
+  const connection = { getReadyState: (o) => ready.push(o), send: (o) => sends.push(o) };
+  await withBuiltPage((exports) => {
+    exports.entry(exports);
+    const page = createViewModel(exports.default);
+    page.onInit();
+    try { callback({ page, reads, ready, sends, writes, timers, connection }); }
+    finally { page.onDestroy(); }
+  }, { interconnect: { instance: () => connection },
+    storage: { get: (o) => reads.push(o), set: (o) => writes.push(o) } });
+}
+
+test("late ready and cache callbacks cannot revive a destroyed page", async (t) => {
+  await withLifecyclePage(t, ({ page, ready, reads, sends, timers }) => {
+    page.onShow();
+    page.onHide();
+    page.onDestroy();
+    const before = JSON.stringify(page);
+    ready[0].success({ status: 1 });
+    ready[0].fail();
+    for (const read of reads) read.fail();
+    assert.equal(sends.length, 0);
+    assert.equal(timers.size, 0);
+    assert.equal(JSON.stringify(page), before);
+  });
+});
+
+test("a previous visibility cycle cannot change the reopened page", async (t) => {
+  await withLifecyclePage(t, ({ page, ready, sends }) => {
+    page.onShow(); page.onHide(); page.onShow();
+    ready[1].success({ status: 1 });
+    ready[0].fail();
+    assert.equal(page.connected, true);
+    assert.equal(sends.length, 1);
+  });
+});
+
+test("late send callbacks and replies cannot revive a hidden request", async (t) => {
+  await withLifecyclePage(t, ({ page, ready, sends, timers, writes }) => {
+    page.onShow(); ready[0].success({ status: 1 });
+    const nonce = sends[0].data.nonce;
+    page.onHide();
+    const before = JSON.stringify(page);
+    sends[0].success(); sends[0].fail();
+    page.handleMessage({ type: "quota_error", nonce, taskSnapshot: null });
+    assert.equal(timers.size, 0);
+    assert.equal(writes.length, 0);
+    assert.equal(JSON.stringify(page), before);
+  });
+});
+
+test("late task cache cannot undo a live empty task board", async (t) => {
+  await withLifecyclePage(t, ({ page, ready, reads, sends }) => {
+    page.onShow(); ready[0].success({ status: 1 });
+    page.handleMessage({ type: "quota_error", nonce: sends[0].data.nonce, taskSnapshot: null });
+    reads[1].success(JSON.stringify({ generatedAtMs: 1, chatGptState: "running",
+      tasks: [{ title: "old", state: "running", updatedAtMs: 1 }] }));
+    assert.equal(page.taskSnapshot, null);
+    assert.equal(page.hasTaskItems, false);
+  });
+});
+
+test("clock updates preserve disconnection and authorization failures", async (t) => {
+  await withLifecyclePage(t, ({ page, connection }) => {
+    page.hasSnapshot = true;
+    page.snapshotStatusText = "已同步"; page.snapshotStatusTone = "healthy";
+    page.lastSnapshotAtMs = Date.now();
+    connection.onclose(); page.updateClock();
+    assert.equal(page.statusText, "离线");
+    connection.onerror({ code: 1001 }); page.updateClock();
+    assert.equal(page.statusText, "需重新授权");
+  });
+});
+
+test("late quota cache cannot replace a live snapshot or its status", async (t) => {
+  await withLifecyclePage(t, ({ page, ready, reads, sends }) => {
+    const snapshot = { protocolVersion: 2, generatedAt: new Date().toISOString(),
+      sourceStatus: "ok", limitsCollectedAt: null, windows: [],
+      resetInventory: { status: "cached", availableCount: 2, cachedAt: null, items: [] },
+      link: { computer: "online", codex: "ok" } };
+    page.onShow(); ready[0].success({ status: 1 });
+    page.handleMessage({ type: "quota_snapshot", nonce: sends[0].data.nonce, snapshot });
+    snapshot.resetInventory.availableCount = 1;
+    reads[0].success(JSON.stringify(snapshot)); reads[0].fail();
+    assert.equal(page.resetCountText, "2");
+    assert.equal(page.statusText, "已同步");
+  });
+});
+
+test("a reply arriving before send success does not leave a timeout", async (t) => {
+  await withLifecyclePage(t, ({ page, ready, sends, timers }) => {
+    page.onShow(); ready[0].success({ status: 1 });
+    page.handleMessage({ type: "quota_error", nonce: sends[0].data.nonce });
+    const timerCount = timers.size;
+    sends[0].success();
+    assert.equal(timers.size, timerCount);
+  });
+});
+
+test("a slow phone reply is accepted after timeout until a new request replaces it", async (t) => {
+  await withLifecyclePage(t, ({ page, ready, sends, timers }) => {
+    page.onShow(); ready[0].success({ status: 1 });
+    const nonce = sends[0].data.nonce;
+    sends[0].success();
+    const [timerId, timeout] = [...timers.entries()].at(-1);
+    timers.delete(timerId); timeout();
+    assert.equal(page.statusText, "离线");
+    page.handleMessage({ type: "quota_snapshot", nonce, snapshot: {
+      protocolVersion: 2, generatedAt: new Date().toISOString(), sourceStatus: "ok",
+      limitsCollectedAt: null, windows: [],
+      resetInventory: { status: "cached", availableCount: 2, cachedAt: null, items: [] },
+      link: { computer: "online", codex: "ok" },
+    } });
+    assert.equal(page.statusText, "已同步");
+    assert.equal(page.resetCountText, "2");
+  });
+});
+
 test("built Band page registers and renders its first frame", async () => {
   await withBuiltPage((pageExports) => {
     assert.equal(typeof pageExports.entry, "function");
